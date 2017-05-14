@@ -7,7 +7,7 @@ function debug(message) {
   printErr(message);
 }
 
-const MLECULES = ['A', 'B', 'C', 'D', 'E'];
+const MOLECULES = ['A', 'B', 'C', 'D', 'E'];
 const MAX_MOLECULES = 10;
 const STAND_BY = [
   'hey there!',
@@ -105,7 +105,7 @@ function readStepValues() {
     }
 
     sample.rank = parseInt(inputs[2]);
-    sample.expertiseGain = inputs[3];
+    sample.gain = inputs[3];
     sample.health = parseInt(inputs[4]);
     sample.cost = {
       A: parseInt(inputs[5]),
@@ -127,8 +127,17 @@ function robotsShorcut() {
 }
 
 function processSample(sample) {
-  sample.costTotal = sample.cost.A + sample.cost.B + sample.cost.C + sample.cost.D + sample.cost.E;
+  const expertise = myRobot.expertise;
+  sample.costTotal = MOLECULES.reduce((sum, m) => sample.cost[m] - expertise[m], 0);
   sample.healthCost = sample.health / sample.costTotal;
+
+  const canProduce = sample.costTotal <= MAX_MOLECULES;
+  if (!canProduce) {
+    sample.value = 0;
+  } else {
+    sample.value = sample.healthCost + sample.gain;
+  }
+
   return sample;
 }
 
@@ -139,7 +148,7 @@ function step() {
 
 function doPhase() {
   if (myRobot.eta > 0) {
-    print(STAND_BY[(((new Date()).getMilliseconds()/20)|0)%STAND_BY.length]);
+    print(STAND_BY[(((new Date()).getMilliseconds() / 20) | 0) % STAND_BY.length]);
     return;
   }
 
@@ -153,7 +162,7 @@ function doPhase() {
     case 1:
       const rank = myRobot.samples.length + 1;
       print(`CONNECT ${rank}`);
-      if (rank === 2) {
+      if (rank === 3) {
         myState.phase = 2;
       }
       break;
@@ -164,7 +173,13 @@ function doPhase() {
       break;
 
     case 3:
-      sampleId = diagnoseOrStoreSample();
+      sampleId = diagnoseSample();
+      if (sampleId !== -1) {
+        print(`CONNECT ${sampleId}`);
+        return;
+      }
+
+      sampleId = chooseSample();
       if (sampleId !== -1) {
         print(`CONNECT ${sampleId}`);
       } else {
@@ -214,7 +229,7 @@ function doPhase() {
   }
 }
 
-function diagnoseOrStoreSample() {
+function diagnoseSample() {
   const mySamples = myRobot.samples;
   for (let i = 0; i !== mySamples.length; i++) {
     if (mySamples[i].costTotal < 0) {
@@ -222,38 +237,49 @@ function diagnoseOrStoreSample() {
     }
   }
 
-  if (mySamples.reduce((total, s) => total + s.costTotal, 0) <= MAX_MOLECULES) {
-    return -1;
+  return -1;
+}
+
+function chooseSample() {
+  const expertise = myRobot.expertise;
+  const availableSamples = samples.filter(s => s.carriedBy !== 1);
+  availableSamples.sort((a, b) => b.value - a.value);
+
+  let choosenSamplesCount = 0;
+  for (let i = 0; i !== availableSamples.length && choosenSamplesCount < 3; i++) {
+    let choosenSample = availableSamples[i];
+    if (choosenSample.carriedBy === 0) {
+      ++choosenSamplesCount;
+      continue;
+    }
+
+    const mySamples = myRobot.samples;
+    if (mySamples.length < 3) {
+      return choosenSample.id;
+    }
+
+    const worstCarriedSample = myRobot.samples.reduce(
+      (min, cur) => min.value < cur.value ? min : cur
+    );
+
+    return worstCarriedSample.id;
   }
 
-  // robot has 2 samples which need more than 10 molecules
-  if (mySamples[0].health >= mySamples[1].health) {
-    if (mySamples[0].costTotal <= MAX_MOLECULES) {
-      return mySamples[1].id;
-    } else {
-      return mySamples[0].id;
-    }
-  } else {
-    if (mySamples[1].costTotal <= MAX_MOLECULES) {
-      return mySamples[0].id;
-    } else {
-      return mySamples[1].id;
-    }
-  }
+  return -1;
 }
 
 function getRequiredMolecule() {
   const storage = myRobot.storage;
   const expertise = myRobot.expertise;
 
-  // ToDo refactore this check
-  if (Object.keys(storage).reduce((sum, k) => sum + storage[k], 0) > MAX_MOLECULES){
+  // ToDo refactor this check
+  if (Object.keys(storage).reduce((sum, k) => sum + storage[k], 0) === MAX_MOLECULES) {
     return 'O';
   }
 
   let needMore = false;
-  for (let j = 0; j !== MLECULES.length; j++) {
-    const molecule = MLECULES[j];
+  for (let j = 0; j !== MOLECULES.length; j++) {
+    const molecule = MOLECULES[j];
     const moleculesRequired = myRobot.samples.reduce((tc, s) => tc + s.cost[molecule], 0);
     if (storage[molecule] + expertise[molecule] < moleculesRequired) {
       if (availableMolecules[molecule]) {
@@ -268,6 +294,7 @@ function getRequiredMolecule() {
 }
 
 function canProduceSample() {
+  debug(samplesReadyToProduce());
   return samplesReadyToProduce().includes(true);
 }
 
@@ -276,8 +303,8 @@ function samplesReadyToProduce() {
   const expertise = myRobot.expertise;
 
   return myRobot.samples.map(s => {
-    for (let i = 0; i !== MLECULES.length; i++) {
-      const molecule = MLECULES[i];
+    for (let i = 0; i !== MOLECULES.length; i++) {
+      const molecule = MOLECULES[i];
       if (s.cost[molecule] > storage[molecule] + expertise[molecule]) {
         return false;
       }
@@ -290,7 +317,7 @@ function samplesReadyToProduce() {
 function getSampleToProduce() {
   const ready = samplesReadyToProduce();
   for (let i = 0; i !== ready.length; i++) {
-    if (!ready[i]){
+    if (!ready[i]) {
       continue;
     }
 
@@ -309,13 +336,13 @@ if (typeof global === 'undefined' || typeof global.inTest === 'undefined') {
     getRequiredMolecule,
     diagnoseOrStoreSample,
     config: {
-      availableMolecules: function(m) {
+      availableMolecules: function (m) {
         availableMolecules = m;
       },
-      samples: function(s) {
+      samples: function (s) {
         samples = s;
       },
-      robots: function(r) {
+      robots: function (r) {
         robots = r;
         robotsShorcut();
       }
