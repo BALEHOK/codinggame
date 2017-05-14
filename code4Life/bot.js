@@ -119,6 +119,8 @@ function readStepValues() {
 
     samples.push(sample);
   }
+
+  myRobot.samples.sort((a, b) => b.value - a.value);
 }
 
 function robotsShorcut() {
@@ -135,7 +137,7 @@ function processSample(sample) {
   if (!canProduce) {
     sample.value = 0;
   } else {
-    sample.value = sample.healthCost + sample.gain;
+    sample.value = sample.healthCost + (sample.gain && 1 || 0);
   }
 
   return sample;
@@ -334,7 +336,8 @@ if (typeof global === 'undefined' || typeof global.inTest === 'undefined') {
   module.exports = {
     processSample,
     getRequiredMolecule,
-    diagnoseOrStoreSample,
+    diagnoseSample,
+    chooseSample,
     config: {
       availableMolecules: function (m) {
         availableMolecules = m;
