@@ -7,8 +7,13 @@ function debug(message) {
   printErr(message);
 }
 
-const molecules = ['A', 'B', 'C', 'D', 'E'];
+const MLECULES = ['A', 'B', 'C', 'D', 'E'];
 const MAX_MOLECULES = 10;
+const STAND_BY = [
+  'hey there!',
+  'on my way',
+  'what\'s up?'
+]
 
 let stepNum = 0;
 
@@ -134,7 +139,7 @@ function step() {
 
 function doPhase() {
   if (myRobot.eta > 0) {
-    print('WAIT');
+    print(STAND_BY[(((new Date()).getMilliseconds()/20)|0)%STAND_BY.length]);
     return;
   }
 
@@ -159,8 +164,7 @@ function doPhase() {
       break;
 
     case 3:
-      sampleId = diagnoseOrStoreSample(myRobot.samples);
-      debug(sampleId);
+      sampleId = diagnoseOrStoreSample();
       if (sampleId !== -1) {
         print(`CONNECT ${sampleId}`);
       } else {
@@ -175,14 +179,10 @@ function doPhase() {
       break;
 
     case 5:
-      const requiredMolecule = getRequiredMolecule(
-        myRobot.samples,
-        myRobot.storage,
-        availableMolecules
-      );
+      const requiredMolecule = getRequiredMolecule();
       switch (requiredMolecule) {
         case 'X':
-          if (!canProduceSample(myRobot.samples, myRobot.storage)) {
+          if (!canProduceSample()) {
             print('WAIT');
             break;
           }
@@ -203,7 +203,7 @@ function doPhase() {
       break;
 
     case 7:
-      sampleId = getSampleToProduce(myRobot.samples, myRobot.storage);
+      sampleId = getSampleToProduce();
       if (sampleId !== -1) {
         print(`CONNECT ${sampleId}`);
       } else {
@@ -252,9 +252,9 @@ function getRequiredMolecule() {
   }
 
   let needMore = false;
-  for (let j = 0; j !== molecules.length; j++) {
-    const molecule = molecules[j];
-    const moleculesRequired = samples.reduce((tc, s) => tc + s.cost[molecule], 0);
+  for (let j = 0; j !== MLECULES.length; j++) {
+    const molecule = MLECULES[j];
+    const moleculesRequired = myRobot.samples.reduce((tc, s) => tc + s.cost[molecule], 0);
     if (storage[molecule] + expertise[molecule] < moleculesRequired) {
       if (availableMolecules[molecule]) {
         return molecule;
@@ -267,17 +267,17 @@ function getRequiredMolecule() {
   return needMore && 'X' || 'O';
 }
 
-function canProduceSample(samples, storage) {
-  return samplesReadyToProduce(samples, storage).includes(true);
+function canProduceSample() {
+  return samplesReadyToProduce().includes(true);
 }
 
 function samplesReadyToProduce() {
   const storage = myRobot.storage;
   const expertise = myRobot.expertise;
 
-  return samples.map(s => {
-    for (let i = 0; i !== molecules.length; i++) {
-      const molecule = molecules[i];
+  return myRobot.samples.map(s => {
+    for (let i = 0; i !== MLECULES.length; i++) {
+      const molecule = MLECULES[i];
       if (s.cost[molecule] > storage[molecule] + expertise[molecule]) {
         return false;
       }
@@ -287,14 +287,14 @@ function samplesReadyToProduce() {
   });
 }
 
-function getSampleToProduce(samples, storage) {
-  const ready = samplesReadyToProduce(samples, storage);
+function getSampleToProduce() {
+  const ready = samplesReadyToProduce();
   for (let i = 0; i !== ready.length; i++) {
     if (!ready[i]){
       continue;
     }
 
-    return samples[i].id;
+    return myRobot.samples[i].id;
   }
 
   return -1;
