@@ -1,7 +1,7 @@
 var Jasmine = require('jasmine');
 var jasmine = new Jasmine();
 
-const botFile = './bot.wood.1';
+const botFile = './bot.bronze';
 console.log('\n*********************************');
 console.log('running tests over file', botFile);
 console.log('*********************************\n');
