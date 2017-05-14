@@ -14,7 +14,8 @@ let stepNum = 0;
 
 let robots, myRobot, foeRobot, samples, availableMolecules;
 let myState = {
-  phase: 0 // 0 - epmpty, 1 - picked sample
+  phase: 0, // 0 - epmpty, 1 - picked sample
+  waitingForMolecule: 0
 };
 
 // initialization
@@ -74,8 +75,7 @@ function readStepValues() {
     robots[i] = robot;
   }
 
-  myRobot = robots[0];
-  foeRobot = robots[1];
+  robotsShorcut();
 
   inputs = readline().split(' ');
   availableMolecules = {
@@ -116,10 +116,14 @@ function readStepValues() {
   }
 }
 
+function robotsShorcut() {
+  myRobot = robots[0];
+  foeRobot = robots[1];
+}
+
 function processSample(sample) {
   sample.costTotal = sample.cost.A + sample.cost.B + sample.cost.C + sample.cost.D + sample.cost.E;
   sample.healthCost = sample.health / sample.costTotal;
-
   return sample;
 }
 
@@ -178,8 +182,10 @@ function doPhase() {
       );
       switch (requiredMolecule) {
         case 'X':
-          print('WAIT');
-          break;
+          if (!canProduceSample(myRobot.samples, myRobot.storage)) {
+            print('WAIT');
+            break;
+          }
 
         case 'O':
           myState.phase = 6;
@@ -197,7 +203,7 @@ function doPhase() {
       break;
 
     case 7:
-      sampleId = getSampleToProduce();
+      sampleId = getSampleToProduce(myRobot.samples, myRobot.storage);
       if (sampleId !== -1) {
         print(`CONNECT ${sampleId}`);
       } else {
@@ -208,39 +214,48 @@ function doPhase() {
   }
 }
 
-function diagnoseOrStoreSample(samples) {
-  for (let i = 0; i !== samples.length; i++) {
-    if (samples[i].costTotal < 0) {
-      return samples[i].id;
+function diagnoseOrStoreSample() {
+  const mySamples = myRobot.samples;
+  for (let i = 0; i !== mySamples.length; i++) {
+    if (mySamples[i].costTotal < 0) {
+      return mySamples[i].id;
     }
   }
 
-  if (samples.reduce((total, s) => total + s.costTotal, 0) <= MAX_MOLECULES) {
+  if (mySamples.reduce((total, s) => total + s.costTotal, 0) <= MAX_MOLECULES) {
     return -1;
   }
 
   // robot has 2 samples which need more than 10 molecules
-  if (samples[0].health >= samples[1].health) {
-    if (samples[0].costTotal <= MAX_MOLECULES) {
-      return samples[1].id;
+  if (mySamples[0].health >= mySamples[1].health) {
+    if (mySamples[0].costTotal <= MAX_MOLECULES) {
+      return mySamples[1].id;
     } else {
-      return samples[0].id;
+      return mySamples[0].id;
     }
   } else {
-    if (samples[1].costTotal <= MAX_MOLECULES) {
-      return samples[0].id;
+    if (mySamples[1].costTotal <= MAX_MOLECULES) {
+      return mySamples[0].id;
     } else {
-      return samples[1].id;
+      return mySamples[1].id;
     }
   }
 }
 
-function getRequiredMolecule(samples, storage, availableMolecules) {
+function getRequiredMolecule() {
+  const storage = myRobot.storage;
+  const expertise = myRobot.expertise;
+
+  // ToDo refactore this check
+  if (Object.keys(storage).reduce((sum, k) => sum + storage[k], 0) > MAX_MOLECULES){
+    return 'O';
+  }
+
   let needMore = false;
   for (let j = 0; j !== molecules.length; j++) {
     const molecule = molecules[j];
     const moleculesRequired = samples.reduce((tc, s) => tc + s.cost[molecule], 0);
-    if (storage[molecule] < moleculesRequired) {
+    if (storage[molecule] + expertise[molecule] < moleculesRequired) {
       if (availableMolecules[molecule]) {
         return molecule;
       } else {
@@ -252,8 +267,37 @@ function getRequiredMolecule(samples, storage, availableMolecules) {
   return needMore && 'X' || 'O';
 }
 
-function getSampleToProduce() {
-  return myRobot.samples.length ? myRobot.samples[0].id : -1;
+function canProduceSample(samples, storage) {
+  return samplesReadyToProduce(samples, storage).includes(true);
+}
+
+function samplesReadyToProduce() {
+  const storage = myRobot.storage;
+  const expertise = myRobot.expertise;
+
+  return samples.map(s => {
+    for (let i = 0; i !== molecules.length; i++) {
+      const molecule = molecules[i];
+      if (s.cost[molecule] > storage[molecule] + expertise[molecule]) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function getSampleToProduce(samples, storage) {
+  const ready = samplesReadyToProduce(samples, storage);
+  for (let i = 0; i !== ready.length; i++) {
+    if (!ready[i]){
+      continue;
+    }
+
+    return samples[i].id;
+  }
+
+  return -1;
 }
 
 if (typeof global === 'undefined' || typeof global.inTest === 'undefined') {
@@ -263,6 +307,18 @@ if (typeof global === 'undefined' || typeof global.inTest === 'undefined') {
   module.exports = {
     processSample,
     getRequiredMolecule,
-    diagnoseOrStoreSample
+    diagnoseOrStoreSample,
+    config: {
+      availableMolecules: function(m) {
+        availableMolecules = m;
+      },
+      samples: function(s) {
+        samples = s;
+      },
+      robots: function(r) {
+        robots = r;
+        robotsShorcut();
+      }
+    }
   };
 }

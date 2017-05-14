@@ -8,3 +8,6 @@ s
 * check diagnosed samples in game
 
 * block foe by some molecule
+
+* get 3 samples at once
+* fix tests

@@ -15,33 +15,36 @@ describe('getRequiredMolecule suite', function () {
     }];
 
     samples.forEach(bot.processSample);
+    bot.config.samples(samples);
 
-    const availableMolecules = { A: 100, B: 100, C: 100, D: 100, E: 100 };
+    bot.config.availableMolecules({ A: 100, B: 100, C: 100, D: 100, E: 100 });
 
     const storage = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    const expertise = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    bot.config.robots([{ storage, expertise }]);
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('A');
+    expect(bot.getRequiredMolecule()).toBe('A');
     ++storage.A;
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('A');
+    expect(bot.getRequiredMolecule()).toBe('A');
     ++storage.A;
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('B');
+    expect(bot.getRequiredMolecule()).toBe('B');
     ++storage.B;
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('C');
+    expect(bot.getRequiredMolecule()).toBe('C');
     ++storage.C;
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('E');
+    expect(bot.getRequiredMolecule()).toBe('E');
     ++storage.E;
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('E');
+    expect(bot.getRequiredMolecule()).toBe('E');
     ++storage.E;
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('E');
+    expect(bot.getRequiredMolecule()).toBe('E');
     ++storage.E;
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('O');
+    expect(bot.getRequiredMolecule()).toBe('O');
   });
 
   it('gets B if A is not available', function () {
@@ -53,12 +56,15 @@ describe('getRequiredMolecule suite', function () {
     }];
 
     samples.forEach(bot.processSample);
+    bot.config.samples(samples);
 
-    const availableMolecules = { A: 0, B: 100, C: 100, D: 100, E: 100 };
+    bot.config.availableMolecules({ A: 0, B: 100, C: 100, D: 100, E: 100 });
 
     const storage = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    const expertise = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    bot.config.robots([{ storage, expertise }]);
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('B');
+    expect(bot.getRequiredMolecule()).toBe('B');
   });
 
   it('returns X if no molecules available', function () {
@@ -70,12 +76,15 @@ describe('getRequiredMolecule suite', function () {
     }];
 
     samples.forEach(bot.processSample);
+    bot.config.samples(samples);
 
-    const availableMolecules = { A: 0, B: 0, C: 100, D: 100, E: 100 };
+    bot.config.availableMolecules({ A: 0, B: 0, C: 100, D: 100, E: 100 });
 
     const storage = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    const expertise = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    bot.config.robots([{ storage, expertise }]);
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('X');
+    expect(bot.getRequiredMolecule()).toBe('X');
   });
 
   it('returns O if no molecules required', function () {
@@ -87,11 +96,14 @@ describe('getRequiredMolecule suite', function () {
     }];
 
     samples.forEach(bot.processSample);
+    bot.config.samples(samples);
 
-    const availableMolecules = { A: 0, B: 0, C: 100, D: 100, E: 100 };
+    bot.config.availableMolecules({ A: 0, B: 0, C: 100, D: 100, E: 100 });
 
     const storage = { A: 1, B: 1, C: 0, D: 0, E: 0 };
+    const expertise = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    bot.config.robots([{ storage, expertise }]);
 
-    expect(bot.getRequiredMolecule(samples, storage, availableMolecules)).toBe('O');
+    expect(bot.getRequiredMolecule()).toBe('O');
   });
 });

@@ -27,7 +27,8 @@ describe('processSamples suite', function () {
     }];
 
     samples.forEach(bot.processSample);
+    bot.config.robots([{ samples }]);
 
-    expect(bot.diagnoseOrStoreSample(samples)).toBe(12);
+    expect(bot.diagnoseOrStoreSample()).toBe(12);
   });
 });
