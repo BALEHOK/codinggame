@@ -129,6 +129,11 @@ function step() {
 }
 
 function doPhase() {
+  if (myRobot.eta > 0) {
+    print('WAIT');
+    return;
+  }
+
   let sampleId;
   switch (myState.phase) {
     case 0:
@@ -231,16 +236,20 @@ function diagnoseOrStoreSample(samples) {
 }
 
 function getRequiredMolecule(samples, storage, availableMolecules) {
+  let needMore = false;
   for (let j = 0; j !== molecules.length; j++) {
     const molecule = molecules[j];
-    if (storage[molecule] < samples.reduce(
-      (tc, s) => tc + s.cost[molecule], 0)
-    ) {
-      return molecule;
+    const moleculesRequired = samples.reduce((tc, s) => tc + s.cost[molecule], 0);
+    if (storage[molecule] < moleculesRequired) {
+      if (availableMolecules[molecule]) {
+        return molecule;
+      } else {
+        needMore = true;
+      }
     }
   }
 
-  return 'O';
+  return needMore && 'X' || 'O';
 }
 
 function getSampleToProduce() {
