@@ -130,7 +130,7 @@ function robotsShorcut() {
 
 function processSample(sample) {
   const expertise = myRobot.expertise;
-  sample.costTotal = MOLECULES.reduce((sum, m) => sample.cost[m] - expertise[m], 0);
+  sample.costTotal = MOLECULES.reduce((sum, m) => sum + sample.cost[m] - expertise[m], 0);
   sample.healthCost = sample.health / sample.costTotal;
 
   const canProduce = sample.costTotal <= MAX_MOLECULES;
@@ -251,7 +251,15 @@ function chooseSample() {
   for (let i = 0; i !== availableSamples.length && choosenSamplesCount < 3; i++) {
     let choosenSample = availableSamples[i];
     if (choosenSample.carriedBy === 0) {
+      if (choosenSample.value === 0) {
+        return choosenSample.id;
+      }
+
       ++choosenSamplesCount;
+      continue;
+    }
+
+    if (choosenSample.value === 0) {
       continue;
     }
 
@@ -276,7 +284,7 @@ function getRequiredMolecule() {
 
   // ToDo refactor this check
   if (Object.keys(storage).reduce((sum, k) => sum + storage[k], 0) === MAX_MOLECULES) {
-    return 'O';
+    return canProduceSample() && 'O' || 'X';
   }
 
   let needMore = false;
