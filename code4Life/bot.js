@@ -144,6 +144,13 @@ function processSample(sample) {
     sample.value = sample.healthCost + (sample.gain && 1 || 0);
   }
 
+  if (!isSampleProducable(
+    sample, myRobot.storage, expertise,
+    getStorageLeft(myRobot.storage)
+  )) {
+    sample.value /= 2;
+  }
+
   return sample;
 }
 
