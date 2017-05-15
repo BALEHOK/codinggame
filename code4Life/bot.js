@@ -228,6 +228,22 @@ function doPhase() {
       if (sampleId !== -1) {
         print(`CONNECT ${sampleId}`);
       } else {
+        const samples = myRobot.samples;
+
+        myState.phase = 0;
+        if (samples.length) {
+          const storage = myRobot.storage;
+          const expertise = myRobot.expertise;
+          const storageLeft = getStorageLeft(storage);
+          for (let i = 0; i !== samples.length; i++) {
+            const s = samples[i];
+            if (isSampleProducable(s, storage, expertise, storageLeft)) {
+              myState.phase = 4;
+              break;
+            }
+          }
+        }
+
         myState.phase = 0;
         doPhase();
       }
@@ -287,7 +303,7 @@ function getRequiredMolecule() {
   const expertise = shallowCopy(myRobot.expertise);
 
   // ToDo refactor this check
-  const storageLeft = MAX_MOLECULES - Object.keys(storage).reduce((sum, k) => sum + storage[k], 0);
+  const storageLeft = getStorageLeft(storage);
   if (storageLeft <= 0) {
     return haveReadyToProduceSamples() && 'O' || 'X';
   }
@@ -348,6 +364,10 @@ function getRequiredMolecule() {
   }
 
   return needMore && 'X' || 'O';
+}
+
+function getStorageLeft(storage) {
+  return MAX_MOLECULES - Object.keys(storage).reduce((sum, k) => sum + storage[k], 0)
 }
 
 function haveReadyToProduceSamples() {
