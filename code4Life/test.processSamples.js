@@ -1,6 +1,6 @@
 const bot = global.bot;
 
-describe('processSamples', function () {
+describe('chooseSample', function () {
   let samples, storage, expertise, availableMolecules;
   function initConfig() {
     bot.config.availableMolecules(availableMolecules);
@@ -51,7 +51,7 @@ describe('processSamples', function () {
   it('doesn\'t hang with the same sample', function () {
     storage = { A: 0, B: 0, C: 0, D: 2, E: 2 };
     expertise = { A: 4, B: 1, C: 1, D: 1, E: 1 };
-    availableMolecules = { A: 100, B: 100, C: 100, D: 100, E: 100 };
+    availableMolecules = { A: 6, B: 6, C: 6, D: 4, E: 3 };
 
     samples = [
       {
@@ -149,5 +149,94 @@ describe('processSamples', function () {
     initConfig();
 
     expect(bot.chooseSample()).toBe(-1);
+  });
+});
+
+describe('processSample', function () {
+  let storage, expertise, availableMolecules;
+  function initConfig() {
+    bot.config.availableMolecules(availableMolecules);
+    const myRobot = {
+      storage,
+      expertise
+    };
+    bot.config.robots([myRobot]);
+  }
+  describe('sample value', function () {
+    it('sets basic value', function () {
+      storage = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+      expertise = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+      availableMolecules = { A: 10, B: 10, C: 10, D: 10, E: 10 };
+
+      const sample = {
+        id: 12,
+        cost: { A: 0, B: 1, C: 1, D: 1, E: 1 },
+        rank: 1,
+        health: 1,
+        gain: '',
+        carriedBy: 0
+      };
+
+      initConfig();
+
+      expect(bot.processSample(sample).value).toBe(0.25);
+    });
+
+    it('set 0 value if can\'t produce', function () {
+      storage = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+      expertise = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+      availableMolecules = { A: 10, B: 10, C: 10, D: 10, E: 10 };
+
+      const sample = {
+        id: 12,
+        cost: { A: 10, B: 1, C: 1, D: 1, E: 1 },
+        rank: 1,
+        health: 1,
+        gain: '',
+        carriedBy: 0
+      };
+
+      initConfig();
+
+      expect(bot.processSample(sample).value).toBe(0);
+    });
+
+    it('increases value is sample is ready', function () {
+      storage = { A: 0, B: 1, C: 1, D: 1, E: 1 };
+      expertise = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+      availableMolecules = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+
+      const sample = {
+        id: 12,
+        cost: { A: 0, B: 1, C: 1, D: 1, E: 1 },
+        rank: 1,
+        health: 1,
+        gain: '',
+        carriedBy: 0
+      };
+
+      initConfig();
+
+      expect(bot.processSample(sample).value).toBe(7.5);
+    });
+
+    it('considers expertise', function () {
+      storage = { A: 0, B: 0, C: 1, D: 1, E: 1 };
+      expertise = { A: 0, B: 0, C: 0, D: 1, E: 3 };
+      availableMolecules = { A: 0, B: 1, C: 1, D: 0, E: 0 };
+
+      const sample = {
+        id: 12,
+        cost: { A: 0, B: 1, C: 1, D: 1, E: 1 },
+        rank: 1,
+        health: 1,
+        gain: '',
+        carriedBy: 0
+      };
+
+      initConfig();
+
+      expect(bot.processSample(sample).value).toBe(0.5);
+    });
   });
 });

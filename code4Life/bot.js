@@ -135,7 +135,7 @@ function robotsShorcut() {
 function processSample(sample) {
   const storage = myRobot.storage;
   const expertise = myRobot.expertise;
-  sample.costTotal = MOLECULES.reduce((sum, m) => sum + sample.cost[m] - expertise[m], 0);
+  sample.costTotal = MOLECULES.reduce((sum, m) => sum + Math.max(sample.cost[m] - expertise[m], 0), 0);
   sample.healthCost = sample.health / sample.costTotal;
 
   const canProduce = sample.costTotal <= MAX_MOLECULES;
@@ -145,13 +145,13 @@ function processSample(sample) {
     sample.value = sample.healthCost + (sample.gain && 1 || 0);
   }
 
-  if (!isSampleProducable(
+  if (isSampleReadyToProduce(sample, storage, expertise)) {
+    sample.value *= 30;
+    sample.readyToProduce = true;
+  } else if (!isSampleProducable(
     sample, storage, expertise, getStorageLeft(storage)
   )) {
     sample.value /= 2;
-  } else if (isSampleReadyToProduce(sample, storage, expertise)) {
-    sample.value *= 10;
-    sample.readyToProduce = true;
   }
 
   return sample;
@@ -176,12 +176,7 @@ function doPhase() {
       break;
 
     case 1:
-      let rank = myRobot.samples.length + 1;
-      if (rank === 3 && getStorageLeft(myRobot.storage) < 8) {
-        rank = 2;
-      }
-
-      print(`CONNECT ${rank}`);
+      print(`CONNECT ${getSampleRankToAsk()}`);
       if (myRobot.samples.length === 2) {
         myState.phase = 2;
       }
@@ -264,17 +259,33 @@ function doPhase() {
           }
         }
 
-        myState.phase = 0;
         doPhase();
       }
       break;
   }
 }
 
+function getSampleRankToAsk() {
+  const q = sumMolecules(myRobot.expertise);
+  if (q < 3) {
+    return myRobot.samples.length && 2 || 1;
+  }
+
+  if (q < 5) {
+    return 2;
+  }
+
+  if (q < 7) {
+    return myRobot.samples.length === 2 && 2 || 3;
+  }
+
+  return 3;
+}
+
 function diagnoseSample() {
   const mySamples = myRobot.samples;
   for (let i = 0; i !== mySamples.length; i++) {
-    if (mySamples[i].costTotal < 0) {
+    if (mySamples[i].health < 0) {
       return mySamples[i].id;
     }
   }
@@ -386,8 +397,11 @@ function getRequiredMolecule() {
   return needMore && 'X' || 'O';
 }
 
+function sumMolecules(container) {
+  return Object.keys(storage).reduce((sum, k) => sum + storage[k], 0);
+}
 function getStorageLeft(storage) {
-  return MAX_MOLECULES - Object.keys(storage).reduce((sum, k) => sum + storage[k], 0)
+  return MAX_MOLECULES - sumMolecules(storage);
 }
 
 function haveReadyToProduceSamples() {
