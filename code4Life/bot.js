@@ -133,6 +133,7 @@ function robotsShorcut() {
 }
 
 function processSample(sample) {
+  const storage = myRobot.storage;
   const expertise = myRobot.expertise;
   sample.costTotal = MOLECULES.reduce((sum, m) => sum + sample.cost[m] - expertise[m], 0);
   sample.healthCost = sample.health / sample.costTotal;
@@ -145,10 +146,12 @@ function processSample(sample) {
   }
 
   if (!isSampleProducable(
-    sample, myRobot.storage, expertise,
-    getStorageLeft(myRobot.storage)
+    sample, storage, expertise, getStorageLeft(storage)
   )) {
     sample.value /= 2;
+  } else if (isSampleReadyToProduce(sample, storage, expertise)) {
+    sample.value *= 10;
+    sample.readyToProduce = true;
   }
 
   return sample;
@@ -173,9 +176,13 @@ function doPhase() {
       break;
 
     case 1:
-      const rank = myRobot.samples.length + 1;
+      let rank = myRobot.samples.length + 1;
+      if (rank === 3 && getStorageLeft(myRobot.storage) < 8) {
+        rank = 2;
+      }
+
       print(`CONNECT ${rank}`);
-      if (rank === 3) {
+      if (myRobot.samples.length === 2) {
         myState.phase = 2;
       }
       break;
@@ -195,10 +202,16 @@ function doPhase() {
       sampleId = chooseSample();
       if (sampleId !== -1) {
         print(`CONNECT ${sampleId}`);
+        return;
+      }
+
+      if (myRobot.samples.findIndex(s => s.readyToProduce) !== -1) {
+        myState.phase = 6;
       } else {
         myState.phase = 4;
-        doPhase();
       }
+
+      doPhase();
       break;
 
     case 4:
