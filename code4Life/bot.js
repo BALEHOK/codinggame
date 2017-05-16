@@ -24,7 +24,8 @@ let stepNum = 0;
 let robots, myRobot, foeRobot, samples, availableMolecules;
 let myState = {
   phase: 0, // 0 - epmpty, 1 - picked sample
-  waitingForMolecule: 0
+  waitingForMolecule: 0,
+  rankImpact: 0
 };
 
 // initialization
@@ -178,6 +179,7 @@ function doPhase() {
     case 1:
       print(`CONNECT ${getSampleRankToAsk()}`);
       if (myRobot.samples.length === 2) {
+        myState.rankImpact = 0;
         myState.phase = 2;
       }
       break;
@@ -200,7 +202,10 @@ function doPhase() {
         return;
       }
 
-      if (myRobot.samples.findIndex(s => s.readyToProduce) !== -1) {
+      if (myRobot.samples.length === 0) {
+        myState.phase = 0;
+        myState.rankImpact = 1;
+      } else if (myRobot.samples.findIndex(s => s.readyToProduce) !== -1) {
         myState.phase = 6;
       } else {
         myState.phase = 4;
@@ -212,6 +217,7 @@ function doPhase() {
     case 4:
       print('GOTO MOLECULES');
       myState.phase = 5;
+      myState.waitingForMolecule = 0;
       break;
 
     case 5:
@@ -219,7 +225,19 @@ function doPhase() {
       switch (requiredMolecule) {
         case 'X':
           if (!haveReadyToProduceSamples()) {
-            print('WAIT');
+            if (foeRobot.target !== 'LABORATORY'
+              || myState.waitingForMolecule > 5
+            ) {
+              if (myRobot.samples.length < 2) {
+                myState.phase = 6;
+              } else {
+                myState.phase = 8;
+              }
+              doPhase();
+            } else {
+              ++myState.waitingForMolecule;
+              print('WAIT');
+            }
             break;
           }
 
@@ -262,24 +280,46 @@ function doPhase() {
         doPhase();
       }
       break;
+
+    case 8:
+      print('GOTO DIAGNOSIS');
+      myState.phase = 9;
+      break;
+
+    case 9:
+      if (myRobot.samples.length) {
+        print(`CONNECT ${myRobot.samples[0].id}`);
+      } else {
+        myState.phase = 0;
+        myState.rankImpact = 2;
+        doPhase();
+      }
+      break;
   }
 }
 
+const rankSamples = [
+  [1, 1, 1],
+  [2, 2, 2],
+  [3, 3, 2],
+  [3, 3, 3]
+]
 function getSampleRankToAsk() {
   const q = sumMolecules(myRobot.expertise);
-  if (q < 3) {
-    return myRobot.samples.length && 2 || 1;
+  let rankLevel
+  if (q < 4) {
+    rankLevel = 0;
+  } else if (q < 7) {
+    rankLevel = 1;
+  } else if (q < 10) {
+    rankLevel = 2;
+  } else {
+    rankLevel = 3;
   }
 
-  if (q < 5) {
-    return 2;
-  }
+  rankLevel = Math.max(rankLevel-myState.rankImpact, 0);
 
-  if (q < 7) {
-    return myRobot.samples.length === 2 && 2 || 3;
-  }
-
-  return 3;
+  return rankSamples[rankLevel][myRobot.samples.length];
 }
 
 function diagnoseSample() {
