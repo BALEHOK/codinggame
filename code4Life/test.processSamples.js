@@ -47,109 +47,6 @@ describe('chooseSample', function () {
 
     expect(bot.chooseSample()).toBe(-1);
   });
-
-  it('doesn\'t hang with the same sample', function () {
-    storage = { A: 0, B: 0, C: 0, D: 2, E: 2 };
-    expertise = { A: 4, B: 1, C: 1, D: 1, E: 1 };
-    availableMolecules = { A: 6, B: 6, C: 6, D: 4, E: 3 };
-
-    samples = [
-      {
-        "id": 4,
-        "carriedBy": 0,
-        "rank": 3,
-        "gain": "E",
-        "health": 50,
-        "cost": {
-          "A": 0,
-          "B": 0,
-          "C": 0,
-          "D": 7,
-          "E": 3
-        },
-        "costTotal": 2,
-        "healthCost": 25,
-        "value": 26
-      },
-      {
-        "id": 17,
-        "carriedBy": 0,
-        "rank": 3,
-        "gain": "B",
-        "health": 30,
-        "cost": {
-          "A": 3,
-          "B": 0,
-          "C": 3,
-          "D": 3,
-          "E": 5
-        },
-        "costTotal": 6,
-        "healthCost": 5,
-        "value": 6
-      },
-      {
-        "id": 20,
-        "carriedBy": 0,
-        "rank": 2,
-        "gain": "B",
-        "health": 30,
-        "cost": {
-          "A": 0,
-          "B": 6,
-          "C": 0,
-          "D": 0,
-          "E": 0
-        },
-        "costTotal": -2,
-        "healthCost": -15,
-        "value": -14
-      },
-      {
-        "id": 15,
-        "carriedBy": 1,
-        "rank": 3,
-        "gain": "B",
-        "health": 40,
-        "cost": {
-          "A": 7,
-          "B": 0,
-          "C": 0,
-          "D": 0,
-          "E": 0
-        },
-        "costTotal": -1,
-        "healthCost": -40,
-        "value": -39
-      },
-      {
-        "id": 18,
-        "carriedBy": 1,
-        "rank": 2,
-        "gain": "D",
-        "health": 30,
-        "cost": {
-          "A": 0,
-          "B": 0,
-          "C": 0,
-          "D": 6,
-          "E": 0
-        },
-        "costTotal": -2,
-        "healthCost": -15,
-        "value": -14
-      }
-    ];
-
-    initConfig();
-
-    expect(bot.chooseSample()).toBe(13);
-
-    samples[1].carriedBy = -1;
-    initConfig();
-
-    expect(bot.chooseSample()).toBe(-1);
-  });
 });
 
 describe('processSample', function () {
@@ -237,6 +134,25 @@ describe('processSample', function () {
       initConfig();
 
       expect(bot.processSample(sample).value).toBe(0.5);
+    });
+
+    it('set 0 value if no enough storage left and can\'t produce', function () {
+      storage = { A: 6, B: 0, C: 1, D: 1, E: 1 };
+      expertise = { A: 0, B: 0, C: 0, D: 0, E: 3 };
+      availableMolecules = { A: 0, B: 2, C: 1, D: 0, E: 0 };
+
+      const sample = {
+        id: 12,
+        cost: { A: 0, B: 2, C: 1, D: 1, E: 1 },
+        rank: 1,
+        health: 1,
+        gain: '',
+        carriedBy: 0
+      };
+
+      initConfig();
+
+      expect(bot.processSample(sample).value).toBe(0);
     });
   });
 });

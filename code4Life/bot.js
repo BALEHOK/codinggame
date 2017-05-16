@@ -138,9 +138,11 @@ function processSample(sample) {
   sample.costTotal = MOLECULES.reduce((sum, m) => sum + Math.max(sample.cost[m] - expertise[m], 0), 0);
   sample.healthCost = sample.health / sample.costTotal;
 
-  const canProduce = sample.costTotal <= MAX_MOLECULES;
-  if (!canProduce) {
+  const producible = isSampleProducible(sample, storage, expertise, getStorageLeft(storage));
+
+  if (!producible.storageEnough) {
     sample.value = 0;
+    return sample;
   } else {
     sample.value = sample.healthCost + (sample.gain && 1 || 0);
   }
@@ -148,9 +150,7 @@ function processSample(sample) {
   if (isSampleReadyToProduce(sample, storage, expertise)) {
     sample.value *= 30;
     sample.readyToProduce = true;
-  } else if (!isSampleProducable(
-    sample, storage, expertise, getStorageLeft(storage)
-  )) {
+  } else if (!producible.moleculesAvailable) {
     sample.value /= 2;
   }
 
@@ -252,7 +252,7 @@ function doPhase() {
           const storageLeft = getStorageLeft(storage);
           for (let i = 0; i !== samples.length; i++) {
             const s = samples[i];
-            if (isSampleProducable(s, storage, expertise, storageLeft)) {
+            if (isSampleProducible(s, storage, expertise, storageLeft).producible) {
               myState.phase = 4;
               break;
             }
@@ -362,7 +362,7 @@ function getRequiredMolecule() {
       continue;
     }
 
-    if (!isSampleProducable(s, storage, expertise, storageLeft)) {
+    if (!isSampleProducible(s, storage, expertise, storageLeft).producible) {
       needMore = true;
 
       for (let j = 0; j !== MOLECULES.length; j++) {
@@ -376,7 +376,7 @@ function getRequiredMolecule() {
     }
 
     for (let j = 0; j !== MOLECULES.length; j++) {
-      const molecule = MOLECULES[j];;
+      const molecule = MOLECULES[j];
       if (storage[molecule] + expertise[molecule] < c[molecule]) {
         if (availableMolecules[molecule]) {
           return molecule;
@@ -398,7 +398,7 @@ function getRequiredMolecule() {
 }
 
 function sumMolecules(container) {
-  return Object.keys(storage).reduce((sum, k) => sum + storage[k], 0);
+  return Object.keys(container).reduce((sum, k) => sum + container[k], 0);
 }
 function getStorageLeft(storage) {
   return MAX_MOLECULES - sumMolecules(storage);
@@ -425,20 +425,33 @@ function isSampleReadyToProduce(sample, storage, expertise) {
   return true;
 }
 
-function isSampleProducable(sample, storage, expertise, storageLeft) {
+function isSampleProducible(sample, storage, expertise, storageLeft) {
   const c = sample.cost;
   let moleculesRequiredToGather = 0;
-  for (let j = 0; j !== MOLECULES.length; j++) {
+  const res = {
+    producible: true,
+    moleculesAvailable: true,
+    storageEnough: true
+  };
+
+  for (
+    let j = 0;
+    j !== MOLECULES.length && (res.moleculesAvailable || res.storageEnough);
+    j++
+  ) {
     const molecule = MOLECULES[j];
-    const required = c[molecule] - storage[molecule] - expertise[molecule];
+    const required = Math.max(c[molecule] - storage[molecule] - expertise[molecule], 0);
     moleculesRequiredToGather += required;
-    if (required > availableMolecules[molecule]
-      || moleculesRequiredToGather > storageLeft) {
-      return false;
+    if (required > availableMolecules[molecule]) {
+      res.moleculesAvailable = false;
+    }
+    if (moleculesRequiredToGather > storageLeft) {
+      res.storageEnough = false;
     }
   }
 
-  return true;
+  res.producible = res.moleculesAvailable && res.storageEnough;
+  return res;
 }
 
 function getSampleToProduce() {
@@ -463,7 +476,8 @@ if (typeof global === 'undefined' || typeof global.inTest === 'undefined') {
     getRequiredMolecule,
     diagnoseSample,
     chooseSample,
-    isSampleProducable,
+    isSampleProducible,
+    getStorageLeft,
     config: {
       availableMolecules: function (m) {
         availableMolecules = m;
