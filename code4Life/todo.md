@@ -1,3 +1,3 @@
-* do something when robot is blocked by molecules
-
 * work on science porjects
+
+* прежде чем идти за новыми семплами, проверить уже открытые
