@@ -300,21 +300,24 @@ function doPhase() {
 
 const rankSamples = [
   [1, 1, 1],
+  [2, 2, 1],
   [2, 2, 2],
-  [3, 3, 2],
+  [3, 2, 2],
   [3, 3, 3]
 ]
 function getSampleRankToAsk() {
   const q = sumMolecules(myRobot.expertise);
   let rankLevel
-  if (q < 4) {
+  if (q < 6) {
     rankLevel = 0;
-  } else if (q < 7) {
+  } else if (q < 9) {
     rankLevel = 1;
-  } else if (q < 10) {
+  } else if (q < 12) {
     rankLevel = 2;
-  } else {
+  } else if (q < 15) {
     rankLevel = 3;
+  } else {
+    rankLevel = 4;
   }
 
   rankLevel = Math.max(rankLevel-myState.rankImpact, 0);
