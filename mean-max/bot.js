@@ -175,7 +175,7 @@ function doPhase() {
 
   if (wreck) {
     const move = calcThrottle(myReaper, wreck);
-    print(`${move.x} ${move.y} ${move.throttle}`);
+    print(`${move.x} ${move.y} ${move.throttle | 0}`);
   } else {
     print('WAIT');
   }
