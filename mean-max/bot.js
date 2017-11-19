@@ -212,8 +212,8 @@ function calcThrottle(unit, target) {
   }
 
   const move = {
-    x: target.x,
-    y: target.y,
+    x: target.x - position.x,
+    y: target.y - position.y,
     throttle
   };
 
