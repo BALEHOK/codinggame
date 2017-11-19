@@ -1,3 +1,28 @@
+class Reaper {
+  constructor() {
+    this.unitId = 0;
+    this.playerId = 0;
+    this.score = 0;
+    this.rage = 0;
+    this.mass = 0;
+    this.radius = 0;
+    this.x = 0;
+    this.y = 0;
+    this.vx = 0;
+    this.vy = 0;
+  }
+}
+
+class Wreck {
+  constructor() {
+    this.unitId = 0;
+    this.radius = 0;
+    this.x = 0;
+    this.y = 0;
+    this.water = 0;
+  }
+}
+
 function debug(message) {
   if (typeof message === 'object') {
     debug(JSON.stringify(message));
@@ -13,6 +38,9 @@ function shallowCopy(obj) {
 
 let stepNum = 0;
 
+let players, myReaper, en1, en2;
+let wrecks;
+
 // initialization
 function initialize() {
 
@@ -27,11 +55,59 @@ function gameLoop() {
 }
 
 function resetStepValues() {
+  myReaper = new Reaper();
+  en1 = new Reaper();
+  en2 = new Reaper();
+  players = [myReaper, en1, en2];
 
+  wrecks = [];
 }
 
 function readStepValues() {
+  myReaper.score = parseInt(readline());
+  en1.score = parseInt(readline());
+  en2.score = parseInt(readline());
 
+  myReaper.rage = parseInt(readline());
+  en1.rage = parseInt(readline());
+  en2.rage = parseInt(readline());
+
+  const unitCount = parseInt(readline());
+  for (let i = 0; i < unitCount; i++) {
+    const inputs = readline().split(' ');
+
+    const unitId = parseInt(inputs[0]);
+    const unitType = parseInt(inputs[1]);
+    const playerId = parseInt(inputs[2]);
+
+    switch (unitType) {
+      case 0:
+        const r = players[playerId];
+        r.unitId = unitId;
+        r.playerId = playerId;
+        r.mass = parseInt(inputs[3]);
+        r.radius = parseInt(inputs[4]);
+        r.x = parseInt(inputs[5]);
+        r.y = parseInt(inputs[6]);
+        r.vx = parseInt(inputs[7]);
+        r.vy = parseInt(inputs[8]);
+        break;
+
+      case 4:
+        const wreck = new Wreck();
+        wreck.unitId = unitId;
+        wreck.radius = parseInt(inputs[4]);
+        wreck.x = parseInt(inputs[5]);
+        wreck.y = parseInt(inputs[6]);
+        wreck.water = parseInt(inputs[9]);
+
+        wrecks.push(wreck);
+        break;
+
+      default:
+        debug(`unknown unit type ${unitType}`);
+    }
+  }
 }
 
 function step() {
@@ -40,34 +116,9 @@ function step() {
 }
 
 function doPhase() {
-  // game loop
-  while (true) {
-    var myScore = parseInt(readline());
-    var enemyScore1 = parseInt(readline());
-    var enemyScore2 = parseInt(readline());
-    var myRage = parseInt(readline());
-    var enemyRage1 = parseInt(readline());
-    var enemyRage2 = parseInt(readline());
-    var unitCount = parseInt(readline());
-    for (var i = 0; i < unitCount; i++) {
-      var inputs = readline().split(' ');
-      var unitId = parseInt(inputs[0]);
-      var unitType = parseInt(inputs[1]);
-      var player = parseInt(inputs[2]);
-      var mass = parseFloat(inputs[3]);
-      var radius = parseInt(inputs[4]);
-      var x = parseInt(inputs[5]);
-      var y = parseInt(inputs[6]);
-      var vx = parseInt(inputs[7]);
-      var vy = parseInt(inputs[8]);
-      var extra = parseInt(inputs[9]);
-      var extra2 = parseInt(inputs[10]);
-    }
-
-    print('WAIT');
-    print('WAIT');
-    print('WAIT');
-  }
+  print(`${wrecks[0].x} ${wrecks[0].y} 100`);
+  print('WAIT');
+  print('WAIT');
 }
 
 if (typeof global === 'undefined' || !global.inTest) {
