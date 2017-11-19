@@ -1,3 +1,4 @@
+// region entities
 class Reaper {
   constructor() {
     this.unitId = 0;
@@ -5,6 +6,7 @@ class Reaper {
     this.score = 0;
     this.rage = 0;
     this.mass = 0;
+    this.friction = 0.2;
     this.radius = 0;
     this.x = 0;
     this.y = 0;
@@ -18,6 +20,7 @@ class Destroyer {
     this.unitId = 0;
     this.playerId = 0;
     this.mass = 0;
+    this.friction = 0.3;
     this.radius = 0;
     this.x = 0;
     this.y = 0;
@@ -30,6 +33,7 @@ class Tanker {
   constructor() {
     this.unitId = 0;
     this.mass = 0;
+    this.friction = 0.4;
     this.radius = 0;
     this.x = 0;
     this.y = 0;
@@ -49,6 +53,9 @@ class Wreck {
     this.water = 0;
   }
 }
+// endregion
+
+const minThrottle = 0, maxThrottle = 300;
 
 let stepNum = 0;
 
@@ -106,7 +113,7 @@ function readStepValues() {
         const r = reapers[playerId];
         r.unitId = unitId;
         r.playerId = playerId;
-        r.mass = parseInt(inputs[3]);
+        r.mass = parseFloat(inputs[3]);
         r.radius = parseInt(inputs[4]);
         r.x = parseInt(inputs[5]);
         r.y = parseInt(inputs[6]);
@@ -118,7 +125,7 @@ function readStepValues() {
         const d = destroyers[playerId];
         d.unitId = unitId;
         d.playerId = playerId;
-        d.mass = parseInt(inputs[3]);
+        d.mass = parseFloat(inputs[3]);
         d.radius = parseInt(inputs[4]);
         d.x = parseInt(inputs[5]);
         d.y = parseInt(inputs[6]);
@@ -129,7 +136,7 @@ function readStepValues() {
       case 3: // tankers
         const tanker = new Tanker();
         tanker.unitId = unitId;
-        tanker.mass = parseInt(inputs[3]);
+        tanker.mass = parseFloat(inputs[3]);
         tanker.radius = parseInt(inputs[4]);
         tanker.x = parseInt(inputs[5]);
         tanker.y = parseInt(inputs[6]);
@@ -167,7 +174,8 @@ function doPhase() {
   const wreck = getBestWreck(myReaper, wrecks);
 
   if (wreck) {
-    print(`${wreck.x} ${wreck.y} 100`);
+    const move = calcThrottle(myReaper, wreck);
+    print(`${move.x} ${move.y} ${move.throttle}`);
   } else {
     print('WAIT');
   }
@@ -180,7 +188,7 @@ function getBestWreck(myReaper, wrecks) {
   let min = 100500;
   let nearestWreck = null;
   wrecks.forEach(w => {
-    const dist = getDistance(myReaper, w);
+    const dist = getLength(myReaper, w);
     if (dist < min) {
       min = dist;
       nearestWreck = w;
@@ -188,6 +196,28 @@ function getBestWreck(myReaper, wrecks) {
   });
 
   return nearestWreck;
+}
+
+function calcThrottle(unit, target) {
+  const friction = unit.friction;
+  const position = {
+    x: unit.x + unit.vx,
+    y: unit.y + unit.vy
+  };
+
+  const dist = getLength(position, target);
+  let throttle = dist * unit.mass;
+  if (throttle > maxThrottle) {
+    throttle = maxThrottle;
+  }
+
+  const move = {
+    x: target.x,
+    y: target.y,
+    throttle
+  };
+
+  return move;
 }
 
 // region utils
@@ -204,11 +234,17 @@ function shallowCopy(obj) {
   return Object.assign({}, obj);
 }
 
-function getDistance(a, b) {
+const zero = {x: 0, y: 0};
+function getLength(a, b) {
+  b = b || zero;
   const dx = a.x - b.x;
   const dy = a.y - b.y;
 
   return Math.sqrt(dx * dx + dy * dy);
+}
+
+function multVectors(a, b) {
+  return a.x*b.x + a.y*b.y;
 }
 //endregion
 
@@ -218,7 +254,10 @@ if (typeof global === 'undefined' || !global.inTest) {
 } else {
   module.exports = {
     Reaper,
+    Destroyer,
+    Tanker,
     Wreck,
-    getBestWreck
+    getBestWreck,
+    calcThrottle
   };
 }
