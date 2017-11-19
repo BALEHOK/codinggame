@@ -116,16 +116,43 @@ function step() {
 }
 
 function doPhase() {
-  print(`${wrecks[0].x} ${wrecks[0].y} 100`);
+  const wreck = getBestWreck(myReaper, wrecks);
+
+  print(`${wreck.x} ${wreck.y} 100`);
   print('WAIT');
   print('WAIT');
 }
+
+function getBestWreck(myReaper, wrecks) {
+  let min = 100500;
+  let nearestWreck = null;
+  wrecks.forEach(w => {
+    const dist = getDistance(myReaper, w);
+    if (dist < min) {
+      min = dist;
+      nearestWreck = w;
+    }
+  });
+
+  return nearestWreck;
+}
+
+// region utils
+function getDistance(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+
+  return Math.sqrt(dx*dx + dy*dy);
+}
+//endregion
 
 if (typeof global === 'undefined' || !global.inTest) {
   initialize();
   gameLoop();
 } else {
   module.exports = {
-
+    Reaper,
+    Wreck,
+    getBestWreck
   };
 }
