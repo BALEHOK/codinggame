@@ -11,13 +11,7 @@ describe('calcThrottle', () => {
     target.x = 10;
     target.y = 0;
 
-    const expected = {
-      x: 5,
-      y: 0,
-      throttle: 2.5
-    };
-
-    expect(bot.calcThrottle(unit, target)).toEqual(expected);
+    assertMove(unit, target);
   });
 
   it('no initial speed. vertical', () => {
@@ -30,13 +24,20 @@ describe('calcThrottle', () => {
     target.x = 5;
     target.y = 10;
 
-    const expected = {
-      x: 0,
-      y: 10,
-      throttle: 5
-    };
+    assertMove(unit, target);
+  });
 
-    expect(bot.calcThrottle(unit, target)).toEqual(expected);
+  it('no initial speed. diagonal', () => {
+    const unit = new bot.Reaper();
+    unit.x = 5;
+    unit.y = 0;
+    unit.mass = 0.5;
+
+    const target = new bot.Wreck();
+    target.x = 8;
+    target.y = 10;
+
+    assertMove(unit, target);
   });
 
   it('with initial speed', () => {
@@ -51,15 +52,7 @@ describe('calcThrottle', () => {
     target.x = 10;
     target.y = 0;
 
-    const length = Math.sqrt(29);
-
-    const expected = {
-      x: 5,
-      y: -2,
-      throttle: length * unit.mass
-    };
-
-    expect(bot.calcThrottle(unit, target)).toEqual(expected);
+    assertMove(unit, target);
   });
 
   it('overspeeding', () => {
@@ -74,12 +67,32 @@ describe('calcThrottle', () => {
     target.x = 10;
     target.y = 0;
 
-    const expected = {
-      x: -5,
-      y: 0,
-      throttle: 2.5
-    };
-
-    expect(bot.calcThrottle(unit, target)).toEqual(expected);
+    assertMove(unit, target);
   });
-})
+});
+
+function assertMove(unit, target) {
+  const actualMove = bot.calcThrottle(unit, target);
+
+  const res = moveUnit(unit, actualMove);
+
+  expect(res.x).toEqual(target.x);
+  expect(res.y).toEqual(target.y);
+}
+
+function moveUnit(unit, move) {
+  const distance = bot.getLength(unit, move);
+  const coef = (move.throttle / unit.mass) / distance;
+  const res = {
+    vx: unit.vx + (move.x - unit.x) * coef,
+    vy: unit.vy + (move.y - unit.y) * coef
+  };
+
+  res.x = unit.x + res.vx;
+  res.y = unit.y + res.vy;
+
+  res.vx *= 1 - unit.friction;
+  res.vy *= 1 - unit.friction;
+
+  return res;
+}

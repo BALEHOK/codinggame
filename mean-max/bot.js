@@ -131,7 +131,7 @@ function readStepValues() {
         d.y = parseInt(inputs[6]);
         d.vx = parseInt(inputs[7]);
         d.vy = parseInt(inputs[8]);
-      break;
+        break;
 
       case 3: // tankers
         const tanker = new Tanker();
@@ -146,7 +146,7 @@ function readStepValues() {
         tanker.capacity = parseInt(inputs[10]);
 
         tankers.push(tanker);
-      break;
+        break;
 
       case 4: // wrecks
         const wreck = new Wreck();
@@ -199,21 +199,25 @@ function getBestWreck(myReaper, wrecks) {
 }
 
 function calcThrottle(unit, target) {
-  const friction = unit.friction;
-  const position = {
-    x: unit.x + unit.vx,
-    y: unit.y + unit.vy
-  };
+  const dist = getLength(unit, target);
 
-  const dist = getLength(position, target);
-  let throttle = dist * unit.mass;
-  if (throttle > maxThrottle) {
-    throttle = maxThrottle;
+  const throttleX = (target.x - unit.x - 2 * unit.vx) / (target.x - unit.x) * unit.mass * dist;
+  const throttleY = (target.y - unit.y - 2 * unit.vy) / (target.y - unit.y) * unit.mass * dist;
+
+  console.log(throttleX, throttleY);
+
+  let throttle;
+  if (isNaN(throttleX)
+    || throttleX === Number.NEGATIVE_INFINITY
+    || throttleX === Number.POSITIVE_INFINITY) {
+    throttle = throttleY;
+  } else {
+    throttle = throttleX;
   }
 
   const move = {
-    x: target.x - position.x,
-    y: target.y - position.y,
+    x: target.x + unit.vx,
+    y: target.y + unit.vy,
     throttle
   };
 
@@ -234,7 +238,7 @@ function shallowCopy(obj) {
   return Object.assign({}, obj);
 }
 
-const zero = {x: 0, y: 0};
+const zero = { x: 0, y: 0 };
 function getLength(a, b) {
   b = b || zero;
   const dx = a.x - b.x;
@@ -244,7 +248,7 @@ function getLength(a, b) {
 }
 
 function multVectors(a, b) {
-  return a.x*b.x + a.y*b.y;
+  return a.x * b.x + a.y * b.y;
 }
 //endregion
 
@@ -257,6 +261,7 @@ if (typeof global === 'undefined' || !global.inTest) {
     Destroyer,
     Tanker,
     Wreck,
+    getLength,
     getBestWreck,
     calcThrottle
   };
