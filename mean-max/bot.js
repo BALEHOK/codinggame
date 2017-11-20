@@ -199,25 +199,28 @@ function getBestWreck(myReaper, wrecks) {
 }
 
 function calcThrottle(unit, target) {
+  const fixedX = target.x - unit.vx;
+  const fixedY = target.y - unit.vy;
   const dist = getLength(unit, target);
+  const throttle = unit.mass  * dist;
 
-  const throttleX = (target.x - unit.x - 2 * unit.vx) / (target.x - unit.x) * unit.mass * dist;
-  const throttleY = (target.y - unit.y - 2 * unit.vy) / (target.y - unit.y) * unit.mass * dist;
+  // const throttleX = (target.x - unit.x - 2 * unit.vx) / (target.x - unit.x) * unit.mass * dist;
+  // const throttleY = (target.y - unit.y - 2 * unit.vy) / (target.y - unit.y) * unit.mass * dist;
 
-  console.log(throttleX, throttleY);
+  // console.log(throttleX, throttleY);
 
-  let throttle;
-  if (isNaN(throttleX)
-    || throttleX === Number.NEGATIVE_INFINITY
-    || throttleX === Number.POSITIVE_INFINITY) {
-    throttle = throttleY;
-  } else {
-    throttle = throttleX;
-  }
+  // let throttle;
+  // if (isNaN(throttleX)
+  //   || throttleX === Number.NEGATIVE_INFINITY
+  //   || throttleX === Number.POSITIVE_INFINITY) {
+  //   throttle = throttleY;
+  // } else {
+  //   throttle = throttleX;
+  // }
 
   const move = {
-    x: target.x + unit.vx,
-    y: target.y + unit.vy,
+    x: fixedX,
+    y: fixedY,
     throttle
   };
 
