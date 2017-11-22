@@ -1,12 +1,10 @@
 // region entities
-class Reaper {
+class Looter {
   constructor() {
     this.unitId = 0;
     this.playerId = 0;
-    this.score = 0;
-    this.rage = 0;
     this.mass = 0;
-    this.friction = 0.2;
+    this.friction = 0;
     this.radius = 0;
     this.x = 0;
     this.y = 0;
@@ -15,17 +13,29 @@ class Reaper {
   }
 }
 
-class Destroyer {
+class Reaper extends Looter {
   constructor() {
-    this.unitId = 0;
-    this.playerId = 0;
-    this.mass = 0;
+    super();
+    this.score = 0;
+    this.rage = 0;
+    this.mass = 0.5;
+    this.friction = 0.2;
+  }
+}
+
+class Destroyer extends Looter {
+  constructor() {
+    super();
+    this.mass = 1.5;
     this.friction = 0.3;
-    this.radius = 0;
-    this.x = 0;
-    this.y = 0;
-    this.vx = 0;
-    this.vy = 0;
+  }
+}
+
+class Doof extends Looter {
+  constructor() {
+    super();
+    this.mass = 1;
+    this.friction = 0.25;
   }
 }
 
@@ -53,14 +63,19 @@ class Wreck {
     this.water = 0;
   }
 }
-// endregion
+// endregion entities
 
 const minThrottle = 0, maxThrottle = 300;
+const skillRange = 2000, skillRadius = 1000;
+const doofTargetRadius = (skillRange - skillRadius) / 2;
+
+const costOfTar = 30, costOfGrenade = 60, costOfOil = 30;
 
 let stepNum = 0;
 
 let reapers, myReaper, enReaper1, enReaper2;
-let destroyers, myDestroyer, enDestoryer1, enDestoryer2;
+let destroyers, myDestroyer, enDestroyer1, enDestroyer2;
+let doofs, myDoof, enDoof1, enDoof2;
 let tankers, wrecks;
 
 // initialization
@@ -76,16 +91,21 @@ function gameLoop() {
   }
 }
 
-function resetStepValues() {
+function resetStepValues() { 
   myReaper = new Reaper();
   enReaper1 = new Reaper();
   enReaper2 = new Reaper();
   reapers = [myReaper, enReaper1, enReaper2];
 
   myDestroyer = new Destroyer();
-  enDestoryer1 = new Destroyer();
-  enDestoryer2 = new Destroyer();
-  destroyers = [myDestroyer, enDestoryer1, enDestoryer2];
+  enDestroyer1 = new Destroyer();
+  enDestroyer2 = new Destroyer();
+  destroyers = [myDestroyer, enDestroyer1, enDestroyer2];
+
+  myDoof = new Doof();
+  enDoof1 = new Doof();
+  enDoof2 = new Doof();
+  doofs = [myDoof, enDoof1, enDoof2];
 
   tankers = [];
   wrecks = [];
@@ -104,38 +124,25 @@ function readStepValues() {
   for (let i = 0; i < unitCount; i++) {
     const inputs = readline().split(' ');
 
-    const unitId = parseInt(inputs[0]);
     const unitType = parseInt(inputs[1]);
     const playerId = parseInt(inputs[2]);
 
     switch (unitType) {
       case 0: // reapers
-        const r = reapers[playerId];
-        r.unitId = unitId;
-        r.playerId = playerId;
-        r.mass = parseFloat(inputs[3]);
-        r.radius = parseInt(inputs[4]);
-        r.x = parseInt(inputs[5]);
-        r.y = parseInt(inputs[6]);
-        r.vx = parseInt(inputs[7]);
-        r.vy = parseInt(inputs[8]);
+        initLooter(reapers, playerId, inputs);
         break;
 
       case 1: // destroyers
-        const d = destroyers[playerId];
-        d.unitId = unitId;
-        d.playerId = playerId;
-        d.mass = parseFloat(inputs[3]);
-        d.radius = parseInt(inputs[4]);
-        d.x = parseInt(inputs[5]);
-        d.y = parseInt(inputs[6]);
-        d.vx = parseInt(inputs[7]);
-        d.vy = parseInt(inputs[8]);
+        initLooter(destroyers, playerId, inputs);
+        break;
+
+      case 2: // doofs
+        initLooter(doofs, playerId, inputs);
         break;
 
       case 3: // tankers
         const tanker = new Tanker();
-        tanker.unitId = unitId;
+        tanker.unitId = parseInt(inputs[0]);
         tanker.mass = parseFloat(inputs[3]);
         tanker.radius = parseInt(inputs[4]);
         tanker.x = parseInt(inputs[5]);
@@ -150,7 +157,7 @@ function readStepValues() {
 
       case 4: // wrecks
         const wreck = new Wreck();
-        wreck.unitId = unitId;
+        wreck.unitId = parseInt(inputs[0]);
         wreck.radius = parseInt(inputs[4]);
         wreck.x = parseInt(inputs[5]);
         wreck.y = parseInt(inputs[6]);
@@ -158,10 +165,19 @@ function readStepValues() {
 
         wrecks.push(wreck);
         break;
-
-      default:
-        debug(`unknown unit type ${unitType}`);
     }
+  }
+
+  function initLooter(looters, playerId, inputs) {
+    const looter = looters[playerId];
+    looter.unitId = parseInt(inputs[0]);
+    looter.playerId = playerId;
+    looter.mass = parseFloat(inputs[3]);
+    looter.radius = parseInt(inputs[4]);
+    looter.x = parseInt(inputs[5]);
+    looter.y = parseInt(inputs[6]);
+    looter.vx = parseInt(inputs[7]);
+    looter.vy = parseInt(inputs[8]);
   }
 }
 
@@ -171,17 +187,24 @@ function step() {
 }
 
 function doPhase() {
+
+  print(getReaperMove());
+
+  print(getDestroyerMove());
+
+  print(`${reapers[1].x} ${reapers[1].x} 300`);
+}
+
+// region Reaper move
+function getReaperMove() {
   const wreck = getBestWreck(myReaper, wrecks);
 
   if (wreck) {
     const move = calcThrottle(myReaper, wreck);
-    print(`${move.x} ${move.y} ${move.throttle | 0}`);
+    return `${move.x} ${move.y} ${move.throttle | 0}`;
   } else {
-    print('WAIT');
+    return 'WAIT';
   }
-
-  print('WAIT');
-  print('WAIT');
 }
 
 function getBestWreck(myReaper, wrecks) {
@@ -197,35 +220,22 @@ function getBestWreck(myReaper, wrecks) {
 
   return nearestWreck;
 }
+// endregion Reaper move
 
-function calcThrottle(unit, target) {
-  const fixedX = target.x - unit.vx;
-  const fixedY = target.y - unit.vy;
-  const dist = getLength(unit, target);
-  const throttle = unit.mass  * dist;
+// region Doof move
+function getDestroyerMove() {
+  const distToReaper = getLength(myReaper, myDoof);
+  if (distToReaper <= skillRange && myReaper.rage >= costOfGrenade) {
+    return `SKILL ${myReaper.x} ${myReaper.y}`;
+  }
 
-  // const throttleX = (target.x - unit.x - 2 * unit.vx) / (target.x - unit.x) * unit.mass * dist;
-  // const throttleY = (target.y - unit.y - 2 * unit.vy) / (target.y - unit.y) * unit.mass * dist;
+  const k = (distToReaper - doofTargetRadius) / distToReaper;
+  const doofTargetX = Math.round(k * (myReaper.x - myDoof.x));
+  const doofTargetY = Math.round(k * (myReaper.y - myDoof.y));
 
-  // console.log(throttleX, throttleY);
-
-  // let throttle;
-  // if (isNaN(throttleX)
-  //   || throttleX === Number.NEGATIVE_INFINITY
-  //   || throttleX === Number.POSITIVE_INFINITY) {
-  //   throttle = throttleY;
-  // } else {
-  //   throttle = throttleX;
-  // }
-
-  const move = {
-    x: fixedX,
-    y: fixedY,
-    throttle
-  };
-
-  return move;
+  return `${doofTargetX} ${doofTargetY} 300`;
 }
+// endregion Doof move
 
 // region utils
 function debug(message) {
@@ -250,10 +260,25 @@ function getLength(a, b) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+function calcThrottle(unit, target) {
+  const fixedX = target.x - unit.vx;
+  const fixedY = target.y - unit.vy;
+  const dist = getLength(unit, target);
+  const throttle = unit.mass * dist;
+
+  const move = {
+    x: fixedX,
+    y: fixedY,
+    throttle
+  };
+
+  return move;
+}
+
 function multVectors(a, b) {
   return a.x * b.x + a.y * b.y;
 }
-//endregion
+//endregion utils
 
 if (typeof global === 'undefined' || !global.inTest) {
   initialize();
