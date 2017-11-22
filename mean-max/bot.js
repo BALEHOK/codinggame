@@ -61,6 +61,7 @@ class Wreck {
     this.x = 0;
     this.y = 0;
     this.water = 0;
+    this.distToMyReaper = 0;
   }
 }
 // endregion entities
@@ -162,10 +163,13 @@ function readStepValues() {
         wreck.x = parseInt(inputs[5]);
         wreck.y = parseInt(inputs[6]);
         wreck.water = parseInt(inputs[9]);
+        wreck.distToMyReaper = getLength(myReaper, wreck);
 
         wrecks.push(wreck);
         break;
     }
+
+    wrecks.sort((a, b) => a.distToMyReaper - b.distToMyReaper);
   }
 
   function initLooter(looters, playerId, inputs) {
@@ -192,7 +196,8 @@ function doPhase() {
 
   print(getDestroyerMove());
 
-  print(`${reapers[1].x} ${reapers[1].x} 300`);
+  const doofMove = getDoofMove();
+  print(`${doofMove.x} ${doofMove.y} ${doofMove.throttle}`);
 }
 
 // region Reaper move
@@ -207,22 +212,15 @@ function getReaperMove() {
   }
 }
 
-function getBestWreck(myReaper, wrecks) {
-  let min = 100500;
-  let nearestWreck = null;
-  wrecks.forEach(w => {
-    const dist = getLength(myReaper, w);
-    if (dist < min) {
-      min = dist;
-      nearestWreck = w;
-    }
-  });
+function getBestWreck() {
+  // for (let i = 0; i < wrecks.lenght && i !== 3; ++i){
 
-  return nearestWreck;
+  // }
+  return wrecks[0];
 }
 // endregion Reaper move
 
-// region Doof move
+// region Destroyer move
 function getDestroyerMove() {
   const distToReaper = getLength(myReaper, myDoof);
   if (distToReaper <= skillRange && myReaper.rage >= costOfGrenade) {
@@ -230,10 +228,30 @@ function getDestroyerMove() {
   }
 
   const k = (distToReaper - doofTargetRadius) / distToReaper;
-  const doofTargetX = Math.round(k * (myReaper.x - myDoof.x));
-  const doofTargetY = Math.round(k * (myReaper.y - myDoof.y));
+  const targetX = Math.round(k * (myReaper.x - myDoof.x));
+  const targetY = Math.round(k * (myReaper.y - myDoof.y));
 
-  return `${doofTargetX} ${doofTargetY} 300`;
+  return `${targetX} ${targetY} 300`;
+}
+// endregion Destroyer move
+
+
+// region Doof move
+function getDoofMove() {
+  const dist1 = getLength(myDoof, enReaper1);
+  const dist2 = getLength(myDoof, enReaper2);
+  if (dist1 > dist2) {
+    return {
+      x: enReaper1.x,
+      y: enReaper1.y,
+      throttle: 300
+    };
+  }
+  return {
+    x: enReaper2.x,
+    y: enReaper2.y,
+    throttle: 300
+  };
 }
 // endregion Doof move
 
