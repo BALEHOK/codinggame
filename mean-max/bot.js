@@ -78,6 +78,7 @@ let reapers, myReaper, enReaper1, enReaper2;
 let destroyers, myDestroyer, enDestroyer1, enDestroyer2;
 let doofs, myDoof, enDoof1, enDoof2;
 let tankers, wrecks;
+let entitiesToAvoid;
 
 // initialization
 function initialize() {
@@ -92,7 +93,7 @@ function gameLoop() {
   }
 }
 
-function resetStepValues() { 
+function resetStepValues() {
   myReaper = new Reaper();
   enReaper1 = new Reaper();
   enReaper2 = new Reaper();
@@ -107,6 +108,12 @@ function resetStepValues() { 
   enDoof1 = new Doof();
   enDoof2 = new Doof();
   doofs = [myDoof, enDoof1, enDoof2];
+
+  entitiesToAvoid = [
+    enReaper1, enReaper2,
+    enDestroyer1, enDestroyer2,
+    enDoof1, enDoof2
+  ];
 
   tankers = [];
   wrecks = [];
@@ -154,6 +161,7 @@ function readStepValues() {
         tanker.capacity = parseInt(inputs[10]);
 
         tankers.push(tanker);
+        entitiesToAvoid.push(tanker);
         break;
 
       case 4: // wrecks
@@ -166,7 +174,7 @@ function readStepValues() {
         wreck.distToMyReaper = getLength(myReaper, wreck);
 
         wrecks.push(wreck);
-        break;
+   break;
     }
 
     wrecks.sort((a, b) => a.distToMyReaper - b.distToMyReaper);
@@ -202,7 +210,7 @@ function doPhase() {
 
 // region Reaper move
 function getReaperMove() {
-  const wreck = getBestWreck(myReaper, wrecks);
+  const wreck = getBestWreck();
 
   if (wreck) {
     const move = calcThrottle(myReaper, wreck);
@@ -213,10 +221,33 @@ function getReaperMove() {
 }
 
 function getBestWreck() {
-  // for (let i = 0; i < wrecks.lenght && i !== 3; ++i){
+  const coefs = [];
+  const n = 3;
+  for (let i = 0; i !==n; ++i){
+    coefs[i] = -4*n;
+  }
 
-  // }
-  return wrecks[0];
+  for (let i = 0; i < wrecks.lenght && i !== n; ++i) {
+    let coef = n - i;
+    const wreck = wrecks[i];
+    for (let j = 0; j !== entitiesToAvoid.lenght && coef > -n; ++j) {
+      if (getLength(entitiesToAvoid[j], wreck) < wreck.radius + wreck.radius) {
+        --coef;
+      }
+    }
+
+    coefs[j] = coef;
+  }
+
+  let max = -100, maxK = -1;
+  for (let i = 0; i!== n; ++i){
+    if (coefs[i] > max) {
+      max = coefs[i];
+      maxK = i;
+    }
+  }
+
+  return wrecks[maxK];
 }
 // endregion Reaper move
 
