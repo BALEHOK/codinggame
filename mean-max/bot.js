@@ -79,11 +79,36 @@ class Oil extends Entity {
     this.remainingTime = 3;
   }
 }
+
+class Move {
+  constructor(type, x, y, throttle) {
+    this.type = type;
+    this.x = x;
+    this.y = y;
+    this.throttle = throttle;
+  }
+
+  toString() {
+    if (this.type === Move.WAIT) {
+      return Move.WAIT;
+    }
+
+    if (this.type === Move.SKILL) {
+      return `${Move.SKILL} ${this.x} ${this.y}`;
+    }
+
+    return `${this.x} ${this.y} ${this.throttle}`;
+  }
+}
+
+Move.GO = 'MOVE';
+Move.SKILL = 'SKILL';
+Move.WAIT = 'WAIT';
 // endregion entities
 
 const minThrottle = 0, maxThrottle = 300;
 const skillRange = 2000, skillRadius = 1000;
-const doofTargetRadius = (skillRange - skillRadius) / 2;
+const destroyerTargetRadius = (skillRange - skillRadius) / 2;
 
 const costOfTar = 30, costOfGrenade = 60, costOfOil = 30;
 
@@ -235,10 +260,9 @@ function doPhase() {
 
   print(getReaperMove());
 
-  print(getDestroyerMove());
+  print(getDestroyerMove().toString());
 
-  const doofMove = getDoofMove();
-  print(`${doofMove.x} ${doofMove.y} ${doofMove.throttle}`);
+  print(getDoofMove().toString());
 }
 
 // region Reaper move
@@ -299,38 +323,49 @@ function getBestWreck(wrecks, entitiesToAvoid) {
 
 // region Destroyer move
 function getDestroyerMove() {
-  const distToReaper = getLength(myReaper, myDoof);
-  if (distToReaper <= skillRange && myReaper.rage >= costOfGrenade) {
-    return `SKILL ${myReaper.x} ${myReaper.y}`;
+  const avoidMove = avoidMyReaper(myDestroyer);
+  if (avoidMove) {
+    return avoidMove;
   }
 
-  const k = (distToReaper - doofTargetRadius) / distToReaper;
-  const targetX = Math.round(k * (myReaper.x - myDoof.x));
-  const targetY = Math.round(k * (myReaper.y - myDoof.y));
+  const distToReaper = getLength(myReaper, myDestroyer);
+  if (distToReaper <= skillRange && myReaper.rage >= costOfGrenade) {
+    return new Move(Move.SKILL, myReaper.x, myReaper.y);
+  }
 
-  return `${targetX} ${targetY} 300`;
+  const k = (distToReaper - destroyerTargetRadius) / distToReaper;
+  const targetX = Math.round(k * (myReaper.x - myDestroyer.x));
+  const targetY = Math.round(k * (myReaper.y - myDestroyer.y));
+
+  return new Move(Move.GO, targetX, targetY, 300);
 }
 // endregion Destroyer move
 
 
 // region Doof move
 function getDoofMove() {
+  const avoidMove = avoidMyReaper(myDoof);
+  if (avoidMove) {
+    return avoidMove;
+  }
+
   const dist1 = getLength(myDoof, enReaper1);
   const dist2 = getLength(myDoof, enReaper2);
   if (dist1 > dist2) {
-    return {
-      x: enReaper1.x,
-      y: enReaper1.y,
-      throttle: 300
-    };
+    return new Move(Move.GO, enReaper1.x, enReaper1.y, 300);
   }
-  return {
-    x: enReaper2.x,
-    y: enReaper2.y,
-    throttle: 300
-  };
+  return new Move(Move.GO, enReaper2.x, enReaper2.y, 300);
 }
 // endregion Doof move
+
+function avoidMyReaper(looter) {
+  if (getLength(looter, myReaper) < 500) {
+    const dx = 3 * (myReaper.x - looter.x);
+    const dy = 3*(myReaper.y - looter.y);
+
+    return new Move(Move.GO, looter.x - dx, looter.y - dy, 300);
+  }
+}
 
 // region utils
 function debug(message) {
