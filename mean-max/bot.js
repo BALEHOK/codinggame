@@ -68,7 +68,7 @@ class Tar extends Entity {
   constructor() {
     super();
 
-    remainingTime = 3;
+    this.remainingTime = 3;
   }
 }
 
@@ -76,7 +76,7 @@ class Oil extends Entity {
   constructor() {
     super();
 
-    remainingTime = 3;
+    this.remainingTime = 3;
   }
 }
 // endregion entities
@@ -217,12 +217,18 @@ function readStepValues() {
     looter.y = parseInt(inputs[6]);
     looter.vx = parseInt(inputs[7]);
     looter.vy = parseInt(inputs[8]);
+
+    if (playerId !== 0) {
+      entitiesToAvoid.push(looter);
+    }
   }
 }
 
 function step() {
+  const t0 = (new Date()).getTime();
   ++stepNum;
   doPhase();
+  debug((new Date()).getTime() - t0);
 }
 
 function doPhase() {
@@ -256,6 +262,12 @@ function getBestWreck(wrecks, entitiesToAvoid) {
 
   for (let i = 0; i < wrecks.length && i !== n; ++i) {
     const wreck = wrecks[i];
+
+    if (wreck.distToMyReaper < wreck.radius) {
+      lastWreckId = wreck.unitId;
+      return wreck;
+    }
+
     let coef = 100 / wreck.distToMyReaper + 0.1 * wreck.water;
     if (wreck.unitId === lastWreckId) {
       ++coef;
