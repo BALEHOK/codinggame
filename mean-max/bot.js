@@ -247,36 +247,41 @@ function getReaperMove() {
   }
 }
 
+let lastWreckId = -1;
 function getBestWreck(wrecks, entitiesToAvoid) {
   wrecks.sort((a, b) => a.distToMyReaper - b.distToMyReaper);
 
   const coefs = [];
   const n = 3;
-  for (let i = 0; i !==n; ++i){
-    coefs[i] = -4*n;
-  }
 
-  for (let i = 0; i < wrecks.lenght && i !== n; ++i) {
-    let coef = n - i;
+  for (let i = 0; i < wrecks.length && i !== n; ++i) {
     const wreck = wrecks[i];
-    for (let j = 0; j !== entitiesToAvoid.lenght && coef > -n; ++j) {
-      if (getLength(entitiesToAvoid[j], wreck) < wreck.radius + wreck.radius) {
+    let coef = 100 / wreck.distToMyReaper + 0.1 * wreck.water;
+    if (wreck.unitId === lastWreckId) {
+      ++coef;
+    }
+
+    for (let j = 0; j !== entitiesToAvoid.length && coef > -n; ++j) {
+      if (getLength(entitiesToAvoid[j], wreck) < 1.5 * wreck.radius) {
         --coef;
       }
     }
 
-    coefs[j] = coef;
+    coefs[i] = coef;
   }
 
   let max = -100, maxK = -1;
-  for (let i = 0; i!== n; ++i){
+  for (let i = 0; i !== n; ++i) {
     if (coefs[i] > max) {
       max = coefs[i];
       maxK = i;
     }
   }
 
-  return wrecks[maxK];
+  const best = wrecks[maxK];
+  lastWreckId = best && best.unitId || -1;
+
+  return best;
 }
 // endregion Reaper move
 
