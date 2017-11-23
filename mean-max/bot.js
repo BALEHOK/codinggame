@@ -282,7 +282,7 @@ function getBestWreck(wrecks, entitiesToAvoid) {
   wrecks.sort((a, b) => a.distToMyReaper - b.distToMyReaper);
 
   const coefs = [];
-  const n = 3;
+  const n = 7;
 
   for (let i = 0; i < wrecks.length && i !== n; ++i) {
     const wreck = wrecks[i];
