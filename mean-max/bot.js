@@ -1,13 +1,18 @@
 // region entities
-class Looter {
+class Entity {
   constructor() {
     this.unitId = 0;
-    this.playerId = 0;
-    this.mass = 0;
-    this.friction = 0;
     this.radius = 0;
     this.x = 0;
     this.y = 0;
+  }
+}
+class Looter extends Entity {
+  constructor() {
+    super();
+    this.playerId = 0;
+    this.mass = 0;
+    this.friction = 0;
     this.vx = 0;
     this.vy = 0;
   }
@@ -39,14 +44,11 @@ class Doof extends Looter {
   }
 }
 
-class Tanker {
+class Tanker extends Entity {
   constructor() {
-    this.unitId = 0;
+    super();
     this.mass = 0;
     this.friction = 0.4;
-    this.radius = 0;
-    this.x = 0;
-    this.y = 0;
     this.vx = 0;
     this.vy = 0;
     this.water = 0;
@@ -54,14 +56,27 @@ class Tanker {
   }
 }
 
-class Wreck {
+class Wreck extends Entity {
   constructor() {
-    this.unitId = 0;
-    this.radius = 0;
-    this.x = 0;
-    this.y = 0;
+    super();
     this.water = 0;
     this.distToMyReaper = 0;
+  }
+}
+
+class Tar extends Entity {
+  constructor() {
+    super();
+
+    remainingTime = 3;
+  }
+}
+
+class Oil extends Entity {
+  constructor() {
+    super();
+
+    remainingTime = 3;
   }
 }
 // endregion entities
@@ -77,7 +92,7 @@ let stepNum = 0;
 let reapers, myReaper, enReaper1, enReaper2;
 let destroyers, myDestroyer, enDestroyer1, enDestroyer2;
 let doofs, myDoof, enDoof1, enDoof2;
-let tankers, wrecks;
+let tankers, wrecks, tars, oils;
 let entitiesToAvoid;
 
 // initialization
@@ -117,6 +132,8 @@ function resetStepValues() {
 
   tankers = [];
   wrecks = [];
+  tars = [];
+  oils = [];
 }
 
 function readStepValues() {
@@ -174,10 +191,20 @@ function readStepValues() {
         wreck.distToMyReaper = getLength(myReaper, wreck);
 
         wrecks.push(wreck);
-   break;
-    }
+        break;
 
-    wrecks.sort((a, b) => a.distToMyReaper - b.distToMyReaper);
+      case 5: // oils
+        const oil = new Oil();
+        oil.unitId = parseInt(inputs[0]);
+        oil.radius = parseInt(inputs[4]);
+        oil.x = parseInt(inputs[5]);
+        oil.y = parseInt(inputs[6]);
+        oil.remainingTime = parseInt(inputs[9]);
+
+        oils.push(oil);
+        entitiesToAvoid.push(oil);
+        break;
+    }
   }
 
   function initLooter(looters, playerId, inputs) {
@@ -210,7 +237,7 @@ function doPhase() {
 
 // region Reaper move
 function getReaperMove() {
-  const wreck = getBestWreck();
+  const wreck = getBestWreck(wrecks, entitiesToAvoid);
 
   if (wreck) {
     const move = calcThrottle(myReaper, wreck);
@@ -220,7 +247,9 @@ function getReaperMove() {
   }
 }
 
-function getBestWreck() {
+function getBestWreck(wrecks, entitiesToAvoid) {
+  wrecks.sort((a, b) => a.distToMyReaper - b.distToMyReaper);
+
   const coefs = [];
   const n = 3;
   for (let i = 0; i !==n; ++i){
