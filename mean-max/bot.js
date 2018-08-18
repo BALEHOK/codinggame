@@ -1,4 +1,4 @@
-// region entities
+// #region entities
 class Entity {
   constructor() {
     this.unitId = 0;
@@ -104,13 +104,17 @@ class Move {
 Move.GO = 'MOVE';
 Move.SKILL = 'SKILL';
 Move.WAIT = 'WAIT';
-// endregion entities
+// #endregion entities
 
-const minThrottle = 0, maxThrottle = 300;
-const skillRange = 2000, skillRadius = 1000;
+const minThrottle = 0,
+  maxThrottle = 300;
+const skillRange = 2000,
+  skillRadius = 1000;
 const destroyerTargetRadius = (skillRange - skillRadius) / 2;
 
-const costOfTar = 30, costOfGrenade = 60, costOfOil = 30;
+const costOfTar = 30,
+  costOfGrenade = 60,
+  costOfOil = 30;
 
 let stepNum = 0;
 
@@ -121,9 +125,7 @@ let tankers, wrecks, tars, oils;
 let entitiesToAvoid;
 
 // initialization
-function initialize() {
-
-}
+function initialize() {}
 
 function gameLoop() {
   while (true) {
@@ -150,9 +152,12 @@ function resetStepValues() {
   doofs = [myDoof, enDoof1, enDoof2];
 
   entitiesToAvoid = [
-    enReaper1, enReaper2,
-    enDestroyer1, enDestroyer2,
-    enDoof1, enDoof2
+    enReaper1,
+    enReaper2,
+    enDestroyer1,
+    enDestroyer2,
+    enDoof1,
+    enDoof2
   ];
 
   tankers = [];
@@ -250,14 +255,13 @@ function readStepValues() {
 }
 
 function step() {
-  const t0 = (new Date()).getTime();
+  const t0 = new Date().getTime();
   ++stepNum;
   doPhase();
-  debug((new Date()).getTime() - t0);
+  debug(new Date().getTime() - t0);
 }
 
 function doPhase() {
-
   print(getReaperMove());
 
   print(getDestroyerMove().toString());
@@ -306,7 +310,8 @@ function getBestWreck(wrecks, entitiesToAvoid) {
     coefs[i] = coef;
   }
 
-  let max = -100, maxK = -1;
+  let max = -100,
+    maxK = -1;
   for (let i = 0; i !== n; ++i) {
     if (coefs[i] > max) {
       max = coefs[i];
@@ -315,7 +320,7 @@ function getBestWreck(wrecks, entitiesToAvoid) {
   }
 
   const best = wrecks[maxK];
-  lastWreckId = best && best.unitId || -1;
+  lastWreckId = (best && best.unitId) || -1;
 
   return best;
 }
@@ -341,7 +346,6 @@ function getDestroyerMove() {
 }
 // endregion Destroyer move
 
-
 // region Doof move
 function getDoofMove() {
   const avoidMove = avoidMyReaper(myDoof);
@@ -361,7 +365,7 @@ function getDoofMove() {
 function avoidMyReaper(looter) {
   if (getLength(looter, myReaper) < 500) {
     const dx = 3 * (myReaper.x - looter.x);
-    const dy = 3*(myReaper.y - looter.y);
+    const dy = 3 * (myReaper.y - looter.y);
 
     return new Move(Move.GO, looter.x - dx, looter.y - dy, 300);
   }
