@@ -1,0 +1,25 @@
+{
+  "name": "codinggame",
+  "version": "1.0.0",
+  "description": "www.codingame.com bots",
+  "main": "index.js",
+  "dependencies": {
+    "flow-bin": "^0.79.1",
+    "flow-remove-types": "^1.2.3",
+    "jasmine": "^2.99.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BALEHOK/codinggame.git"
+  },
+  "author": "Aleskandr Shukletsov",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BALEHOK/codinggame/issues"
+  },
+  "homepage": "https://github.com/BALEHOK/codinggame#readme"
+}

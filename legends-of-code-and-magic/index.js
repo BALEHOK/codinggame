@@ -1,8 +1,8 @@
-//      
+// @flow
 
-                                        
-                                     
-                                    
+declare function printErr(string): void;
+declare function print(string): void;
+declare function readline(): string;
 
 function debug(message) {
   if (typeof message === 'object') {
@@ -15,10 +15,10 @@ function debug(message) {
 
 // #region lasses
 class Abilities {
-             
-             
-             
-  constructor(abilities        ) {
+  b: boolean;
+  c: boolean;
+  g: boolean;
+  constructor(abilities: string) {
     this.b = abilities[0] === 'B';
     this.c = abilities[1] === 'C';
     this.g = abilities[3] === 'G';
@@ -29,21 +29,21 @@ const MY_HAND = 0;
 const MY_BOARD = 1;
 const OPPONENT_BOARD = -1;
 
-             
-                     
-             
-                   
-                   
-               
-                 
-                  
-                       
-                         
-                               
-                  
-  
+type Card = {
+  cardNumber: number,
+  id: number,
+  location: number,
+  cardType: number,
+  cost: number,
+  attack: number,
+  defense: number,
+  abilities: Abilities,
+  myHealthChange: number,
+  opponentHealthChange: number,
+  cardDraw: number
+};
 
-function makeCard(line        )       {
+function makeCard(line: string): Card {
   const inputs = line.split(' ');
   const card = {};
   card.cardNumber = parseInt(inputs[0]);
@@ -61,22 +61,22 @@ function makeCard(line        )       {
   return card;
 }
 
-function cloneCard(card      )       {
+function cloneCard(card: Card): Card {
   return { ...card };
 }
 // #endregion classes
 
 // #region game state
 // per game
-const myDeck         = [];
+const myDeck: Card[] = [];
 
 // per step
-let myMana         = 0;
+let myMana: number = 0;
 let stepNum = 0;
-let myHand        ;
-let myBoard        ;
-let opponentBoard        ;
-let opponentGuards        ;
+let myHand: Card[];
+let myBoard: Card[];
+let opponentBoard: Card[];
+let opponentGuards: Card[];
 // #endregion game state
 
 function draftPhase() {
