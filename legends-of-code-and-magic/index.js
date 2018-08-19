@@ -108,8 +108,9 @@ function draftPhase() {
   }
 }
 
+let cheapCardsNum = 0;
 function chooseCardToDeck(cards, deck) {
-  return cards
+  const choosenIndex = cards
     .map((card, i) => ({
       index: i,
       cardType: card.cardType,
@@ -120,14 +121,20 @@ function chooseCardToDeck(cards, deck) {
       index: 0,
       value: -1
     }).index;
+
+  if (cards[choosenIndex].cost < 5) {
+    ++cheapCardsNum;
+  }
+
+  return choosenIndex;
 }
 
 function calCardValue(card) {
-  let k = card.abilities.g ? 3 : 0;
+  let k = card.abilities.g ? card.defense : 0;
   if (card.abilities.b && card.attack > 4) {
     k += card.attack;
   }
-  return (card.attack + k) / card.cost;
+  return (card.attack + k) / ((1.5 - cheapCardsNum / 20) * card.cost);
 }
 
 // game loop
@@ -176,18 +183,8 @@ function gameLoop() {
     let restCardsInHand = summonGuards(myHand);
     restCardsInHand = summon(restCardsInHand);
 
-    myBoard.forEach(myCard => {
-      if (opponentGuards.length) {
-        const guard = opponentGuards[0];
-        actions.push(actionCreators.attack(myCard.id, guard.id));
-        guard.defense -= myCard.attack;
-        if (guard.defense <= 0) {
-          opponentGuards.shift();
-        }
-      } else {
-        actions.push(actionCreators.attack(myCard.id));
-      }
-    });
+    attack(myBoard.filter(c => !c.abilities.g));
+    attack(myBoard.filter(c => c.abilities.g));
 
     if (actions.length) {
       print(actions.join(';'));
@@ -223,6 +220,25 @@ function summon(cardsOnBoard: Card[]): Card[] {
   });
 
   return restCards;
+}
+
+function attack(strikers) {
+  strikers.forEach(myCard => {
+    if (myCard.attack === 0) {
+      return;
+    }
+
+    if (opponentGuards.length) {
+      const guard = opponentGuards[0];
+      actions.push(actionCreators.attack(myCard.id, guard.id));
+      guard.defense -= myCard.attack;
+      if (guard.defense <= 0) {
+        opponentGuards.shift();
+      }
+    } else {
+      actions.push(actionCreators.attack(myCard.id));
+    }
+  });
 }
 
 const actionCreators = {
