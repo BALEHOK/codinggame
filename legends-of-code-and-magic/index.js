@@ -73,6 +73,7 @@ const myDeck: Card[] = [];
 // per step
 let myMana: number = 0;
 let stepNum = 0;
+let actions = [];
 let myHand: Card[];
 let myBoard: Card[];
 let opponentBoard: Card[];
@@ -118,6 +119,7 @@ function chooseCardToDeck(cards, deck) {
 function gameLoop() {
   while (true) {
     ++stepNum;
+    actions = [];
     myHand = [];
     myBoard = [];
     opponentBoard = [];
@@ -137,18 +139,11 @@ function gameLoop() {
     var opponentHand = parseInt(readline());
     var cardCount = parseInt(readline());
 
-    let actions = [];
-
     for (let j = 0; j < cardCount; j++) {
       const card = makeCard(readline());
       switch (card.location) {
         case MY_HAND:
           myHand.push(card);
-
-          if (card.cost <= myMana) {
-            actions.push(`SUMMON ${card.id}`);
-            myMana -= card.id;
-          }
           break;
 
         case MY_BOARD:
@@ -162,6 +157,10 @@ function gameLoop() {
           }
       }
     }
+
+    let restCardsInHand = summonFree(myHand);
+    restCardsInHand = summonGuards(restCardsInHand);
+    restCardsInHand = summon(restCardsInHand);
 
     myBoard.forEach(myCard => {
       if (opponentGuards.length) {
@@ -184,7 +183,53 @@ function gameLoop() {
   }
 }
 
+function summonFree(cardsOnBoard: Card[]): Card[] {
+  const restCards = [];
+  cardsOnBoard.forEach(card => {
+    if (card.cost === 0) {
+      actions.push(actionCreators.summon(card.id));
+    } else {
+      restCards.push(card);
+    }
+  });
+
+  return restCards;
+}
+
+function summonGuards(cardsOnBoard: Card[]): Card[] {
+  const restCards = [];
+  cardsOnBoard.forEach(card => {
+    if (card.abilities.g && myMana >= card.cost) {
+      actions.push(actionCreators.summon(card.id));
+      myMana -= card.cost;
+    } else {
+      restCards.push(card);
+    }
+  });
+
+  return restCards;
+}
+
+function summon(cardsOnBoard: Card[]): Card[] {
+  if (myMana <= 0) {
+    return cardsOnBoard;
+  }
+
+  const restCards = [];
+  cardsOnBoard.forEach(card => {
+    if (myMana >= card.cost) {
+      actions.push(actionCreators.summon(card.id));
+      myMana -= card.cost;
+    } else {
+      restCards.push(card);
+    }
+  });
+
+  return restCards;
+}
+
 const actionCreators = {
+  summon: my => `SUMMON ${my}`,
   attack: (my, opponent = -1) => `ATTACK ${my} ${opponent}`,
   pass: () => 'PASS'
 };
