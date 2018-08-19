@@ -17,10 +17,12 @@ function debug(message) {
 class Abilities {
   b: boolean;
   c: boolean;
+  d: boolean;
   g: boolean;
   constructor(abilities: string) {
     this.b = abilities[0] === 'B';
     this.c = abilities[1] === 'C';
+    this.d = abilities[2] === 'D';
     this.g = abilities[3] === 'G';
   }
 }
@@ -108,11 +110,24 @@ function draftPhase() {
 
 function chooseCardToDeck(cards, deck) {
   return cards
-    .map((card, i) => ({ index: i, value: card.attack / card.cost }))
+    .map((card, i) => ({
+      index: i,
+      cardType: card.cardType,
+      value: calCardValue(card)
+    }))
+    .filter(card => card.cardType === 0)
     .reduce((q, cardVal) => (cardVal.value > q.value ? cardVal : q), {
-      index: -1,
+      index: 0,
       value: -1
     }).index;
+}
+
+function calCardValue(card) {
+  let k = card.abilities.g ? 3 : 0;
+  if (card.abilities.b && card.attack > 4) {
+    k += card.attack;
+  }
+  return (card.attack + k) / card.cost;
 }
 
 // game loop
@@ -158,8 +173,7 @@ function gameLoop() {
       }
     }
 
-    let restCardsInHand = summonFree(myHand);
-    restCardsInHand = summonGuards(restCardsInHand);
+    let restCardsInHand = summonGuards(myHand);
     restCardsInHand = summon(restCardsInHand);
 
     myBoard.forEach(myCard => {
@@ -183,19 +197,6 @@ function gameLoop() {
   }
 }
 
-function summonFree(cardsOnBoard: Card[]): Card[] {
-  const restCards = [];
-  cardsOnBoard.forEach(card => {
-    if (card.cost === 0) {
-      actions.push(actionCreators.summon(card.id));
-    } else {
-      restCards.push(card);
-    }
-  });
-
-  return restCards;
-}
-
 function summonGuards(cardsOnBoard: Card[]): Card[] {
   const restCards = [];
   cardsOnBoard.forEach(card => {
@@ -211,13 +212,9 @@ function summonGuards(cardsOnBoard: Card[]): Card[] {
 }
 
 function summon(cardsOnBoard: Card[]): Card[] {
-  if (myMana <= 0) {
-    return cardsOnBoard;
-  }
-
   const restCards = [];
   cardsOnBoard.forEach(card => {
-    if (myMana >= card.cost) {
+    if (card.cost === 0 || myMana >= card.cost) {
       actions.push(actionCreators.summon(card.id));
       myMana -= card.cost;
     } else {
