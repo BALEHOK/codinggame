@@ -180,11 +180,14 @@ function gameLoop() {
       }
     }
 
-    let restCardsInHand = summonGuards(myHand);
-    restCardsInHand = summon(restCardsInHand);
+    let { summoned, rest: restCardsInHand } = summonGuards(myHand);
+    const t = summonAll(restCardsInHand);
+    summoned.concat(t.summoned);
+    restCardsInHand = t.rest;
 
-    attack(myBoard.filter(c => !c.abilities.g));
-    attack(myBoard.filter(c => c.abilities.g));
+    const strikers = summoned.filter(c => c.abilities.c).concat(myBoard);
+    attack(strikers.filter(c => !c.abilities.g));
+    attack(strikers.filter(c => c.abilities.g));
 
     if (actions.length) {
       print(actions.join(';'));
@@ -194,32 +197,31 @@ function gameLoop() {
   }
 }
 
-function summonGuards(cardsOnBoard        )         {
-  const restCards = [];
-  cardsOnBoard.forEach(card => {
-    if (card.abilities.g && myMana >= card.cost) {
-      actions.push(actionCreators.summon(card.id));
-      myMana -= card.cost;
-    } else {
-      restCards.push(card);
-    }
-  });
-
-  return restCards;
+function summonGuards(cardsOnBoard        ) {
+  return summon(c => c.abilities.g && myMana >= c.cost, cardsOnBoard);
 }
 
-function summon(cardsOnBoard        )         {
-  const restCards = [];
+function summonAll(cardsOnBoard        ) {
+  return summon(c => c.cost === 0 || myMana >= c.cost, cardsOnBoard);
+}
+
+function summon(
+  predicate                 ,
+  cardsOnBoard        
+)                                     {
+  const summoned = [];
+  const rest = [];
   cardsOnBoard.forEach(card => {
-    if (card.cost === 0 || myMana >= card.cost) {
+    if (predicate(card)) {
+      summoned.push(card);
       actions.push(actionCreators.summon(card.id));
       myMana -= card.cost;
     } else {
-      restCards.push(card);
+      rest.push(card);
     }
   });
 
-  return restCards;
+  return { summoned, rest };
 }
 
 function attack(strikers) {
