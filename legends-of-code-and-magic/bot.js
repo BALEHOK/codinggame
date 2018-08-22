@@ -19,11 +19,15 @@ class Abilities {
              
              
              
+             
+             
   constructor(abilities        ) {
     this.b = abilities[0] === 'B';
     this.c = abilities[1] === 'C';
     this.d = abilities[2] === 'D';
     this.g = abilities[3] === 'G';
+    this.l = abilities[4] === 'L';
+    this.w = abilities[5] === 'W';
   }
 }
 
@@ -130,11 +134,25 @@ function chooseCardToDeck(cards, deck) {
 }
 
 function calCardValue(card) {
-  let k = card.abilities.g ? card.defense : 0;
-  if (card.abilities.b && card.attack > 4) {
+  let k = 0;
+  const abilities = card.abilities;
+  if (abilities.b && card.attack > 4) {
     k += card.attack;
   }
-  return (card.attack + k) / ((1.5 - cheapCardsNum / 20) * card.cost);
+  if (abilities.c) {
+    k += 1;
+  }
+  if (abilities.d) {
+    k += Math.ceil(card.attack / 2);
+  }
+  if (abilities.g) {
+    k += card.defense;
+    if (abilities.w) {
+      k += 2;
+    }
+  }
+
+  return (card.attack + k) / (card.cost * Math.log(card.cost));
 }
 
 // game loop
