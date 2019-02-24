@@ -43,6 +43,10 @@ let startX, startY;
 let targetX, targetY;
 const blocks = {};
 
+function getBlockKey(x, y) {
+  return `${x};${y}`;
+}
+
 // initialization
 function initialize() {
   /**
@@ -83,8 +87,7 @@ function initialize() {
     const initialState = inputs[4] === '1'; // 1 if blocking, 0 otherwise
 
     maze[switchX][switchY] = 's';
-    blocks[blockX] = blocks[blockX] || {};
-    blocks[blockX][blockY] = initialState;
+    blocks[getBlockKey(blockX, blockY)] = initialState;
   }
 }
 
@@ -107,11 +110,21 @@ function findNextStep(pathState, successfullPaths) {
       return;
     }
 
+    const { x, y } = res;
+    let newBlocks;
+    if (maze[x][y] === 's') {
+      const key = getBlockKey(x, y);
+      newBlocks = shallowCopy(pathState.blocks);
+      newBlocks[key] = !pathState.blocks[key];
+    } else {
+      newBlocks = pathState.blocks;
+    }
+
     const newState = new PathState(
       res.x,
       res.y,
       pathState.cellsVisited,
-      pathState.blocks,
+      newBlocks,
       pathState.path + d
     );
 
@@ -152,7 +165,7 @@ function checkStep(pathState, direction) {
   if (
     isOppositeToLastStep(pathState.path, direction) ||
     isInTheLoop(pathState.cellsVisited, newX, newY) ||
-    !canGoTo(newX, newY)
+    !canGoTo(newX, newY, pathState.blocks)
   ) {
     return null;
   }
@@ -160,13 +173,14 @@ function checkStep(pathState, direction) {
   return new PathCheckResult(newX, newY);
 }
 
-function canGoTo(x, y) {
+function canGoTo(x, y, blocks) {
   return (
     x >= 0 &&
     y >= 0 &&
     x < width &&
     y < height &&
-    (maze[x][y] === '.' || maze[x][y] === 's')
+    (maze[x][y] === '.' || maze[x][y] === 's') &&
+    !blocks[getBlockKey(x, y)]
   );
 }
 
