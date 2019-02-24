@@ -17,7 +17,11 @@ class PathState {
   constructor(x, y, prevVisitedCells, blocks, path) {
     this.x = x;
     this.y = y;
-    this.cellsVisited = [...prevVisitedCells, [x, y]];
+
+    this.cellsVisited = { ...prevVisitedCells };
+    const cellKey = getCellKey(x, y);
+    this.cellsVisited[cellKey] = (this.cellsVisited[cellKey] || 0) + 1;
+
     this.blocks = blocks;
     this.path = path;
   }
@@ -30,20 +34,14 @@ class PathCheckResult {
   }
 }
 
-const directions = ['U', 'D', 'L', 'R'];
-const path = {
-  noWay: 0,
-  canGo: 1,
-  hitTarget: 2
-};
-
 let width, height;
 const maze = [];
 let startX, startY;
 let targetX, targetY;
+const switchs = {};
 const blocks = {};
 
-function getBlockKey(x, y) {
+function getCellKey(x, y) {
   return `${x};${y}`;
 }
 
@@ -87,13 +85,22 @@ function initialize() {
     const initialState = inputs[4] === '1'; // 1 if blocking, 0 otherwise
 
     maze[switchX][switchY] = 's';
-    blocks[getBlockKey(blockX, blockY)] = initialState;
+    const switchKey = getCellKey(switchX, switchY);
+    const blockKey = getCellKey(blockX, blockY);
+    switchs[switchKey] = blockKey;
+    blocks[getCellKey(blockX, blockY)] = initialState;
   }
 }
 
 function gameLoop() {
   const successfullPaths = [];
-  const initialState = new PathState(startX, startY, [], blocks, '');
+  const initialState = new PathState(
+    startX,
+    startY,
+    { [getCellKey(startX, startY)]: 1 },
+    blocks,
+    ''
+  );
   findNextStep(initialState, successfullPaths);
 
   successfullPaths.sort((a, b) => a.path.length - b.path.length);
@@ -103,6 +110,7 @@ function gameLoop() {
   console.log(successfullPaths[0].path);
 }
 
+const directions = ['U', 'D', 'L', 'R'];
 function findNextStep(pathState, successfullPaths) {
   directions.forEach(d => {
     const res = checkStep(pathState, d);
@@ -113,9 +121,10 @@ function findNextStep(pathState, successfullPaths) {
     const { x, y } = res;
     let newBlocks;
     if (maze[x][y] === 's') {
-      const key = getBlockKey(x, y);
+      const switchKey = getCellKey(x, y);
+      const blockKey = switchs[switchKey];
       newBlocks = shallowCopy(pathState.blocks);
-      newBlocks[key] = !pathState.blocks[key];
+      newBlocks[blockKey] = !pathState.blocks[blockKey];
     } else {
       newBlocks = pathState.blocks;
     }
@@ -163,7 +172,6 @@ function checkStep(pathState, direction) {
   }
 
   if (
-    isOppositeToLastStep(pathState.path, direction) ||
     isInTheLoop(pathState.cellsVisited, newX, newY) ||
     !canGoTo(newX, newY, pathState.blocks)
   ) {
@@ -180,37 +188,21 @@ function canGoTo(x, y, blocks) {
     x < width &&
     y < height &&
     (maze[x][y] === '.' || maze[x][y] === 's') &&
-    !blocks[getBlockKey(x, y)]
+    !blocks[getCellKey(x, y)]
   );
 }
 
-const oppositeDirectionsMap = {
-  U: 'D',
-  D: 'U',
-  L: 'R',
-  R: 'L'
-};
-function isOppositeToLastStep(path, direction) {
-  if (path.length === 0) {
-    return false;
-  }
-
-  return oppositeDirectionsMap[path[path.length - 1]] === direction;
-}
-
 function isInTheLoop(cellsVisited, x, y) {
-  for (let i = cellsVisited.length - 1; i !== -1; --i) {
-    if (cellsVisited[i][0] === x && cellsVisited[i][1] === y) {
-      return true;
-    }
-  }
-
-  return false;
+  const key = getCellKey(x, y);
+  return cellsVisited[key] >= 2;
 }
 
 if (typeof global === 'undefined' || !global.inTest) {
   initialize();
   gameLoop();
 } else {
-  module.exports = {};
+  module.exports = {
+    getCellKey,
+    isInTheLoop
+  };
 }
