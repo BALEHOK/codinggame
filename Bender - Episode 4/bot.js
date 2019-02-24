@@ -11,6 +11,12 @@ function debug(message) {
 function shallowCopy(obj) {
   return Object.assign({}, obj);
 }
+
+let initTime = new Date().getTime();
+function logTime(message) {
+  message && debug(message);
+  debug(new Date().getTime() - initTime);
+}
 // #endregion helpers
 
 class PathState {
@@ -47,12 +53,9 @@ function getCellKey(x, y) {
 
 // initialization
 function initialize() {
-  /**
-   * Auto-generated code below aims at helping you parse
-   * the standard input according to the problem statement.
-   **/
-
   var inputs = readline().split(' ');
+  initTime = new Date().getTime();
+  logTime('start');
   width = parseInt(inputs[0]);
   height = parseInt(inputs[1]);
   const lines = [];
@@ -90,6 +93,8 @@ function initialize() {
     switchs[switchKey] = blockKey;
     blocks[getCellKey(blockX, blockY)] = initialState;
   }
+
+  logTime('initialized');
 }
 
 function gameLoop() {
@@ -103,11 +108,15 @@ function gameLoop() {
   );
   findNextStep(initialState, successfullPaths);
 
-  successfullPaths.sort((a, b) => a.path.length - b.path.length);
-
+  logTime('end');
   debug(successfullPaths);
 
-  console.log(successfullPaths[0].path);
+  if (successfullPaths.length) {
+    console.log(successfullPaths[0].path);
+  } else {
+    debug('no path found');
+    console.log('');
+  }
 }
 
 const directions = ['U', 'D', 'L', 'R'];
@@ -138,7 +147,15 @@ function findNextStep(pathState, successfullPaths) {
     );
 
     if (res.x === targetX && res.y === targetY) {
+      logTime('path found');
       successfullPaths.push(newState);
+      successfullPaths.sort((a, b) => a.path.length - b.path.length);
+    } else if (
+      successfullPaths.length &&
+      successfullPaths[0].path.length < newState.path.length
+    ) {
+      logTime('path canceled');
+      return;
     } else {
       findNextStep(newState, successfullPaths);
     }
@@ -172,6 +189,7 @@ function checkStep(pathState, direction) {
   }
 
   if (
+    (maze[x][y] !== 's' && isOppositeToLastStep(pathState.path, direction)) ||
     isInTheLoop(pathState.cellsVisited, newX, newY) ||
     !canGoTo(newX, newY, pathState.blocks)
   ) {
@@ -190,6 +208,20 @@ function canGoTo(x, y, blocks) {
     (maze[x][y] === '.' || maze[x][y] === 's') &&
     !blocks[getCellKey(x, y)]
   );
+}
+
+const oppositeDirectionsMap = {
+  U: 'D',
+  D: 'U',
+  L: 'R',
+  R: 'L'
+};
+function isOppositeToLastStep(path, direction) {
+  if (path.length === 0) {
+    return false;
+  }
+
+  return oppositeDirectionsMap[path[path.length - 1]] === direction;
 }
 
 function isInTheLoop(cellsVisited, x, y) {
