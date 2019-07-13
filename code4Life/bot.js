@@ -1,3 +1,4 @@
+// #region helpers
 function debug(message) {
   if (typeof message === 'object') {
     debug(JSON.stringify(message));
@@ -10,20 +11,18 @@ function debug(message) {
 function shallowCopy(obj) {
   return Object.assign({}, obj);
 }
+// #endregion helpers
 
+// #region initialization
 const MOLECULES = ['A', 'B', 'C', 'D', 'E'];
 const MAX_MOLECULES = 10;
-const STAND_BY = [
-  'hey there!',
-  'on my way',
-  'what\'s up?'
-]
+const STAND_BY = ['hey there!', 'on my way', "what's up?"];
 
 let stepNum = 0;
 
 let robots, myRobot, foeRobot, samples, availableMolecules;
 let myState = {
-  phase: 0, // 0 - epmpty, 1 - picked sample
+  phase: 0,
   waitingForMolecule: 0,
   rankImpact: 0
 };
@@ -136,16 +135,25 @@ function robotsShorcut() {
 function processSample(sample) {
   const storage = myRobot.storage;
   const expertise = myRobot.expertise;
-  sample.costTotal = MOLECULES.reduce((sum, m) => sum + Math.max(sample.cost[m] - expertise[m], 0), 0);
-  sample.healthCost = sample.health / sample.costTotal;
+  sample.costTotal = MOLECULES.reduce(
+    (sum, m) => sum + Math.max(sample.cost[m] - expertise[m], 0),
+    0
+  );
+  sample.healthCost =
+    sample.costTotal > 0 ? sample.health / sample.costTotal : 100;
 
-  const producible = isSampleProducible(sample, storage, expertise, getStorageLeft(storage));
+  const producible = isSampleProducible(
+    sample,
+    storage,
+    expertise,
+    getStorageLeft(storage)
+  );
 
   if (!producible.storageEnough) {
     sample.value = 0;
     return sample;
   } else {
-    sample.value = sample.healthCost + (sample.gain && 1 || 0);
+    sample.value = sample.healthCost + ((sample.gain && 1) || 0);
   }
 
   if (isSampleReadyToProduce(sample, storage, expertise)) {
@@ -157,6 +165,7 @@ function processSample(sample) {
 
   return sample;
 }
+// #endregion initialization
 
 function step() {
   ++stepNum;
@@ -165,7 +174,9 @@ function step() {
 
 function doPhase() {
   if (myRobot.eta > 0) {
-    print(STAND_BY[(((new Date()).getMilliseconds() / 20) | 0) % STAND_BY.length]);
+    print(
+      STAND_BY[((new Date().getMilliseconds() / 20) | 0) % STAND_BY.length]
+    );
     return;
   }
 
@@ -177,11 +188,16 @@ function doPhase() {
       break;
 
     case 1:
-      print(`CONNECT ${getSampleRankToAsk()}`);
-      if (myRobot.samples.length === 2) {
+      // getting samples
+      /* don't want to run a lot, get as many samples as possible to fullfill
+          minimizing the running for new samples */
+      if (myRobot.samples.length === 3) {
         myState.rankImpact = 0;
-        myState.phase = 2;
+        myState.phase = 2; // diagnose samples
+        doPhase();
+        return;
       }
+      print(`CONNECT ${getSampleRankToAsk()}`);
       break;
 
     case 2:
@@ -190,6 +206,7 @@ function doPhase() {
       break;
 
     case 3:
+      // first diagnose all the undiagnosed samples
       sampleId = diagnoseSample();
       if (sampleId !== -1) {
         print(`CONNECT ${sampleId}`);
@@ -225,8 +242,9 @@ function doPhase() {
       switch (requiredMolecule) {
         case 'X':
           if (!haveReadyToProduceSamples()) {
-            if (foeRobot.target !== 'LABORATORY'
-              || myState.waitingForMolecule > 5
+            if (
+              foeRobot.target !== 'LABORATORY' ||
+              myState.waitingForMolecule > 3
             ) {
               if (myRobot.samples.length < 2) {
                 myState.phase = 6;
@@ -270,7 +288,9 @@ function doPhase() {
           const storageLeft = getStorageLeft(storage);
           for (let i = 0; i !== samples.length; i++) {
             const s = samples[i];
-            if (isSampleProducible(s, storage, expertise, storageLeft).producible) {
+            if (
+              isSampleProducible(s, storage, expertise, storageLeft).producible
+            ) {
               myState.phase = 4;
               break;
             }
@@ -298,29 +318,27 @@ function doPhase() {
   }
 }
 
-const rankSamples = [
-  [1, 1, 1],
-  [2, 2, 1],
-  [2, 2, 2],
-  [3, 2, 2],
-  [3, 3, 3]
-]
+// const rankSamples = [[1, 1, 1], [2, 2, 1], [2, 2, 2], [3, 2, 2], [3, 3, 3]];
+const rankSamples = [[1, 1, 1], [2, 1, 1], [2, 2, 2], [3, 2, 2], [3, 3, 3]];
 function getSampleRankToAsk() {
+  /*
+    rank 1 sample costs no more than 5
+    rank 2 sample costs no more than 8
+    rank 3 sample costs no more than 14
+  */
   const q = sumMolecules(myRobot.expertise);
-  let rankLevel
-  if (q < 6) {
-    rankLevel = 0;
-  } else if (q < 9) {
-    rankLevel = 1;
-  } else if (q < 12) {
-    rankLevel = 2;
-  } else if (q < 15) {
-    rankLevel = 3;
-  } else {
+  let rankLevel = 0;
+  if (q >= 15) {
     rankLevel = 4;
+  } else if (q >= 12) {
+    rankLevel = 3;
+  } else if (q >= 6) {
+    rankLevel = 2;
+  } else if (q >= 2) {
+    rankLevel = 1;
   }
 
-  rankLevel = Math.max(rankLevel-myState.rankImpact, 0);
+  rankLevel = Math.max(rankLevel - myState.rankImpact, 0);
 
   return rankSamples[rankLevel][myRobot.samples.length];
 }
@@ -342,7 +360,11 @@ function chooseSample() {
   availableSamples.sort((a, b) => b.value - a.value);
 
   let choosenSamplesCount = 0;
-  for (let i = 0; i !== availableSamples.length && choosenSamplesCount < 3; i++) {
+  for (
+    let i = 0;
+    i !== availableSamples.length && choosenSamplesCount < 3;
+    i++
+  ) {
     let choosenSample = availableSamples[i];
     if (choosenSample.carriedBy === 0) {
       if (choosenSample.value === 0) {
@@ -362,8 +384,8 @@ function chooseSample() {
       return choosenSample.id;
     }
 
-    const worstCarriedSample = myRobot.samples.reduce(
-      (min, cur) => min.value < cur.value ? min : cur
+    const worstCarriedSample = myRobot.samples.reduce((min, cur) =>
+      min.value < cur.value ? min : cur
     );
 
     return worstCarriedSample.id;
@@ -379,7 +401,7 @@ function getRequiredMolecule() {
   // ToDo refactor this check
   const storageLeft = getStorageLeft(storage);
   if (storageLeft <= 0) {
-    return haveReadyToProduceSamples() && 'O' || 'X';
+    return (haveReadyToProduceSamples() && 'O') || 'X';
   }
 
   const mySamples = myRobot.samples;
@@ -409,7 +431,7 @@ function getRequiredMolecule() {
       needMore = true;
 
       for (let j = 0; j !== MOLECULES.length; j++) {
-        const molecule = MOLECULES[j];;
+        const molecule = MOLECULES[j];
         if (storage[molecule] + expertise[molecule] < c[molecule]) {
           moleculesToTake.push(molecule);
         }
@@ -437,9 +459,10 @@ function getRequiredMolecule() {
     }
   }
 
-  return needMore && 'X' || 'O';
+  return (needMore && 'X') || 'O';
 }
 
+/** counts all molecules in the container */
 function sumMolecules(container) {
   return Object.keys(container).reduce((sum, k) => sum + container[k], 0);
 }
@@ -454,7 +477,9 @@ function haveReadyToProduceSamples() {
 function samplesReadyToProduce() {
   const storage = myRobot.storage;
   const expertise = myRobot.expertise;
-  return myRobot.samples.map(s => isSampleReadyToProduce(s, storage, expertise));
+  return myRobot.samples.map(s =>
+    isSampleReadyToProduce(s, storage, expertise)
+  );
 }
 
 function isSampleReadyToProduce(sample, storage, expertise) {
@@ -483,7 +508,10 @@ function isSampleProducible(sample, storage, expertise, storageLeft) {
     j++
   ) {
     const molecule = MOLECULES[j];
-    const required = Math.max(c[molecule] - storage[molecule] - expertise[molecule], 0);
+    const required = Math.max(
+      c[molecule] - storage[molecule] - expertise[molecule],
+      0
+    );
     moleculesRequiredToGather += required;
     if (required > availableMolecules[molecule]) {
       res.moleculesAvailable = false;
@@ -522,13 +550,13 @@ if (typeof global === 'undefined' || typeof global.inTest === 'undefined') {
     isSampleProducible,
     getStorageLeft,
     config: {
-      availableMolecules: function (m) {
+      availableMolecules: function(m) {
         availableMolecules = m;
       },
-      samples: function (s) {
+      samples: function(s) {
         samples = s;
       },
-      robots: function (r) {
+      robots: function(r) {
         robots = r;
         robotsShorcut();
       }
