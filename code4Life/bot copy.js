@@ -142,19 +142,25 @@ function processSample(sample) {
   sample.healthCost =
     sample.costTotal > 0 ? sample.health / sample.costTotal : 100;
 
-  const producible = isSampleProducible(sample, expertise);
+  const producible = isSampleProducible(
+    sample,
+    storage,
+    expertise,
+    getStorageLeft(storage)
+  );
 
-  if (!producible) {
+  if (!producible.storageEnough) {
     sample.value = 0;
     return sample;
   } else {
-    sample.value =
-      sample.healthCost + (sample.gain && sample.gain !== '' ? 1 : 0);
+    sample.value = sample.healthCost + ((sample.gain && 1) || 0);
   }
 
   if (isSampleReadyToProduce(sample, storage, expertise)) {
-    sample.value += 3;
+    sample.value *= 30;
     sample.readyToProduce = true;
+  } else if (!producible.moleculesAvailable) {
+    sample.value /= 2;
   }
 
   return sample;
@@ -182,13 +188,16 @@ function doPhase() {
       break;
 
     case 1:
-      if (myRobot.samples.length < 3) {
-        print(`CONNECT ${getSampleRankToAsk()}`);
-      } else {
-        myState.phase = 2;
+      // getting samples
+      /* don't want to run a lot, get as many samples as possible to fullfill
+          minimizing the running for new samples */
+      if (myRobot.samples.length === 3) {
+        myState.rankImpact = 0;
+        myState.phase = 2; // diagnose samples
         doPhase();
         return;
       }
+      print(`CONNECT ${getSampleRankToAsk()}`);
       break;
 
     case 2:
@@ -204,17 +213,18 @@ function doPhase() {
         return;
       }
 
-      sampleId = findNonProducibleSample(myRobot.samples, myRobot.expertise);
+      sampleId = chooseSample();
       if (sampleId !== -1) {
         print(`CONNECT ${sampleId}`);
         return;
       }
 
-      if (myRobot.samples.length < 2) {
-        // get more samples
+      if (myRobot.samples.length === 0) {
         myState.phase = 0;
+        myState.rankImpact = 1;
+      } else if (myRobot.samples.findIndex(s => s.readyToProduce) !== -1) {
+        myState.phase = 6;
       } else {
-        // go to gather molecules
         myState.phase = 4;
       }
 
@@ -231,7 +241,7 @@ function doPhase() {
       const requiredMolecule = getRequiredMolecule();
       switch (requiredMolecule) {
         case 'X':
-          if (!getSamplesReadyToProduce().includes(true)) {
+          if (!haveReadyToProduceSamples()) {
             if (
               foeRobot.target !== 'LABORATORY' ||
               myState.waitingForMolecule > 3
@@ -278,7 +288,9 @@ function doPhase() {
           const storageLeft = getStorageLeft(storage);
           for (let i = 0; i !== samples.length; i++) {
             const s = samples[i];
-            if (isSampleProducible(s, storage, expertise, storageLeft)) {
+            if (
+              isSampleProducible(s, storage, expertise, storageLeft).producible
+            ) {
               myState.phase = 4;
               break;
             }
@@ -306,50 +318,7 @@ function doPhase() {
   }
 }
 
-function getStorageLeft(storage) {
-  return MAX_MOLECULES - sumMolecules(storage);
-}
-
-/** counts all molecules in the container */
-function sumMolecules(container) {
-  return Object.keys(container).reduce((sum, k) => sum + container[k], 0);
-}
-
-/** can robot with current expertise produce the sample */
-function isSampleProducible(sample, expertise) {
-  let totalRequired = 0;
-  for (let i = 0; i !== MOLECULES.length; i++) {
-    const molecule = MOLECULES[i];
-    const moleculeCost = sample.cost[molecule];
-    if (moleculeCost === 0) {
-      continue;
-    }
-
-    const requiredToGatherOfType = Math.max(
-      moleculeCost - expertise[molecule],
-      0
-    );
-    if (requiredToGatherOfType > 5) {
-      return false;
-    }
-
-    totalRequired += requiredToGatherOfType;
-  }
-
-  return totalRequired <= MAX_MOLECULES;
-}
-
-function isSampleReadyToProduce(sample, storage, expertise) {
-  for (let i = 0; i !== MOLECULES.length; i++) {
-    const molecule = MOLECULES[i];
-    if (sample.cost[molecule] > storage[molecule] + expertise[molecule]) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
+// const rankSamples = [[1, 1, 1], [2, 2, 1], [2, 2, 2], [3, 2, 2], [3, 3, 3]];
 const rankSamples = [[1, 1, 1], [2, 1, 1], [2, 2, 2], [3, 2, 2], [3, 3, 3]];
 function getSampleRankToAsk() {
   /*
@@ -385,37 +354,44 @@ function diagnoseSample() {
   return -1;
 }
 
-function findNonProducibleSample(samples, expertise) {
-  for (let i = 0; i !== samples.length; i++) {
-    if (!isSampleProducible(samples[i], expertise)) {
-      return samples[i].id;
-    }
-  }
+function chooseSample() {
+  const expertise = myRobot.expertise;
+  const availableSamples = samples.filter(s => s.carriedBy !== 1);
+  availableSamples.sort((a, b) => b.value - a.value);
 
-  return -1;
-}
+  let choosenSamplesCount = 0;
+  for (
+    let i = 0;
+    i !== availableSamples.length && choosenSamplesCount < 3;
+    i++
+  ) {
+    let choosenSample = availableSamples[i];
+    if (choosenSample.carriedBy === 0) {
+      if (choosenSample.value === 0) {
+        return choosenSample.id;
+      }
 
-function getSampleToProduce() {
-  // ToDo refactore
-  // account for the samples that require same molecules
-  const ready = getSamplesReadyToProduce();
-  for (let i = 0; i !== ready.length; i++) {
-    if (!ready[i]) {
+      ++choosenSamplesCount;
       continue;
     }
 
-    return myRobot.samples[i].id;
+    if (choosenSample.value === 0) {
+      continue;
+    }
+
+    const mySamples = myRobot.samples;
+    if (mySamples.length < 3) {
+      return choosenSample.id;
+    }
+
+    const worstCarriedSample = myRobot.samples.reduce((min, cur) =>
+      min.value < cur.value ? min : cur
+    );
+
+    return worstCarriedSample.id;
   }
 
   return -1;
-}
-
-function getSamplesReadyToProduce() {
-  const storage = myRobot.storage;
-  const expertise = myRobot.expertise;
-  return myRobot.samples.map(s =>
-    isSampleReadyToProduce(s, storage, expertise)
-  );
 }
 
 function getRequiredMolecule() {
@@ -425,7 +401,7 @@ function getRequiredMolecule() {
   // ToDo refactor this check
   const storageLeft = getStorageLeft(storage);
   if (storageLeft <= 0) {
-    return (getSamplesReadyToProduce().includes(true) && 'O') || 'X';
+    return (haveReadyToProduceSamples() && 'O') || 'X';
   }
 
   const mySamples = myRobot.samples;
@@ -451,7 +427,7 @@ function getRequiredMolecule() {
       continue;
     }
 
-    if (!isSampleProducible(s, storage, expertise, storageLeft)) {
+    if (!isSampleProducible(s, storage, expertise, storageLeft).producible) {
       needMore = true;
 
       for (let j = 0; j !== MOLECULES.length; j++) {
@@ -486,20 +462,101 @@ function getRequiredMolecule() {
   return (needMore && 'X') || 'O';
 }
 
+/** counts all molecules in the container */
+function sumMolecules(container) {
+  return Object.keys(container).reduce((sum, k) => sum + container[k], 0);
+}
+function getStorageLeft(storage) {
+  return MAX_MOLECULES - sumMolecules(storage);
+}
+
+function haveReadyToProduceSamples() {
+  return samplesReadyToProduce().includes(true);
+}
+
+function samplesReadyToProduce() {
+  const storage = myRobot.storage;
+  const expertise = myRobot.expertise;
+  return myRobot.samples.map(s =>
+    isSampleReadyToProduce(s, storage, expertise)
+  );
+}
+
+function isSampleReadyToProduce(sample, storage, expertise) {
+  for (let i = 0; i !== MOLECULES.length; i++) {
+    const molecule = MOLECULES[i];
+    if (sample.cost[molecule] > storage[molecule] + expertise[molecule]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isSampleProducible(sample, storage, expertise, storageLeft) {
+  const c = sample.cost;
+  let moleculesRequiredToGather = 0;
+  const res = {
+    producible: true,
+    moleculesAvailable: true,
+    storageEnough: true
+  };
+
+  for (
+    let j = 0;
+    j !== MOLECULES.length && (res.moleculesAvailable || res.storageEnough);
+    j++
+  ) {
+    const molecule = MOLECULES[j];
+    const required = Math.max(
+      c[molecule] - storage[molecule] - expertise[molecule],
+      0
+    );
+    moleculesRequiredToGather += required;
+    if (required > availableMolecules[molecule]) {
+      res.moleculesAvailable = false;
+    }
+    if (moleculesRequiredToGather > storageLeft) {
+      res.storageEnough = false;
+    }
+  }
+
+  res.producible = res.moleculesAvailable && res.storageEnough;
+  return res;
+}
+
+function getSampleToProduce() {
+  const ready = samplesReadyToProduce();
+  for (let i = 0; i !== ready.length; i++) {
+    if (!ready[i]) {
+      continue;
+    }
+
+    return myRobot.samples[i].id;
+  }
+
+  return -1;
+}
+
 if (typeof global === 'undefined' || typeof global.inTest === 'undefined') {
   initialize();
   gameLoop();
 } else {
   module.exports = {
+    processSample,
+    getRequiredMolecule,
+    diagnoseSample,
+    chooseSample,
     isSampleProducible,
+    getStorageLeft,
     config: {
-      setAvailableMolecules: function(m) {
+      availableMolecules: function(m) {
         availableMolecules = m;
       },
-      setSamples: function(s) {
+      samples: function(s) {
         samples = s;
       },
-      setRobots: function(r) {
+      robots: function(r) {
         robots = r;
         robotsShorcut();
       }
