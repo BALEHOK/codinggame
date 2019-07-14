@@ -228,26 +228,46 @@ function doPhase() {
       break;
 
     case 5:
+      if (stepNum > 194 && hasSamplesReadyToProduce()) {
+        myState.phase = 6;
+        doPhase();
+        return;
+      }
+
+      if (getStorageLeft(myRobot.storage) <= 0) {
+        if (hasSamplesReadyToProduce()) {
+          myState.phase = 6;
+        } else {
+          myState.phase = 8;
+        }
+        doPhase();
+        return;
+      }
+
       const requiredMolecule = getRequiredMolecule();
       switch (requiredMolecule) {
         case 'X':
-          if (!getSamplesReadyToProduce().includes(true)) {
-            if (
-              foeRobot.target !== 'LABORATORY' ||
-              myState.waitingForMolecule > 3
-            ) {
-              if (myRobot.samples.length < 2) {
-                myState.phase = 6;
-              } else {
-                myState.phase = 8;
-              }
-              doPhase();
+          if (hasSamplesReadyToProduce()) {
+            myState.phase = 6;
+            doPhase();
+            return;
+          } else if (
+            foeRobot.target === 'LABORATORY' &&
+            myState.waitingForMolecule < 4
+          ) {
+            ++myState.waitingForMolecule;
+            print('WAIT');
+          } else {
+            myState.waitingForMolecule = 0;
+            if (myRobot.samples.length < 2) {
+              myState.phase = 0;
             } else {
-              ++myState.waitingForMolecule;
-              print('WAIT');
+              myState.phase = 8;
             }
-            break;
+            doPhase();
+            return;
           }
+          break;
 
         case 'O':
           myState.phase = 6;
@@ -273,19 +293,18 @@ function doPhase() {
 
         myState.phase = 0;
         if (samples.length) {
-          const storage = myRobot.storage;
-          const expertise = myRobot.expertise;
-          const storageLeft = getStorageLeft(storage);
-          for (let i = 0; i !== samples.length; i++) {
-            const s = samples[i];
-            if (isSampleProducible(s, storage, expertise, storageLeft)) {
-              myState.phase = 4;
-              break;
-            }
+          // ToDo ensure there're molecules for the sample
+          const molecule = getRequiredMolecule();
+          if (molecule === 'X' || molecule === 'O') {
+            // ToDo learn to get best sample from the cloud
+            // and then go to upload existing samples first
+            myState.phase = 0;
+          } else {
+            myState.phase = 4;
           }
         }
-
         doPhase();
+        return;
       }
       break;
 
@@ -299,10 +318,13 @@ function doPhase() {
         print(`CONNECT ${myRobot.samples[0].id}`);
       } else {
         myState.phase = 0;
-        myState.rankImpact = 2;
         doPhase();
       }
       break;
+  }
+
+  function hasSamplesReadyToProduce() {
+    return getSamplesReadyToProduce().includes(true);
   }
 }
 
@@ -361,7 +383,7 @@ function getSampleRankToAsk() {
   let rankLevel = 0;
   if (q >= 15) {
     rankLevel = 4;
-  } else if (q >= 12) {
+  } else if (q >= 10) {
     rankLevel = 3;
   } else if (q >= 6) {
     rankLevel = 2;
@@ -418,15 +440,14 @@ function getSamplesReadyToProduce() {
   );
 }
 
+/**
+ * returns molecule to get
+ * or X if needs more but no molecules available
+ * or O if all good
+ */
 function getRequiredMolecule() {
   const storage = shallowCopy(myRobot.storage);
   const expertise = shallowCopy(myRobot.expertise);
-
-  // ToDo refactor this check
-  const storageLeft = getStorageLeft(storage);
-  if (storageLeft <= 0) {
-    return (getSamplesReadyToProduce().includes(true) && 'O') || 'X';
-  }
 
   const mySamples = myRobot.samples;
   let needMore = false;
@@ -448,19 +469,6 @@ function getRequiredMolecule() {
           storage[molecule] -= c[molecule];
         }
       }
-      continue;
-    }
-
-    if (!isSampleProducible(s, storage, expertise, storageLeft)) {
-      needMore = true;
-
-      for (let j = 0; j !== MOLECULES.length; j++) {
-        const molecule = MOLECULES[j];
-        if (storage[molecule] + expertise[molecule] < c[molecule]) {
-          moleculesToTake.push(molecule);
-        }
-      }
-
       continue;
     }
 
